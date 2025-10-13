@@ -1,0 +1,31 @@
+{
+  "name": "Voice Training Companion",
+  "short_name": "Voice Trainer",
+  "description": "A comprehensive voice training web application with real-time pitch detection and curated reading materials",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff4f2",
+  "theme_color": "#904dff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/Visuals/icones/Logo/logosquare.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/Visuals/icones/Logo/logosquare.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/Visuals/icones/Logo/logosquare.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

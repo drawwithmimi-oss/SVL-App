@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#904dff" />
+  <title>Voice Training Companion - Main</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="./manifest.json" />
+
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="./assets/Visuals/icones/Logo/logosquare.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Voice Trainer" />
+
+  <!-- React / Babel / Tailwind -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--brand-beige);
+      color: var(--brand-grey);
+      line-height: 1.6;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    /* Wave divider */
+    .wave-wrapper {
+      width: 100%;
+      height: 160px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .wave {
+      height: 100%;
+      width: 100%;
+      background: var(--brand-purple);
+      mask: radial-gradient(226.42px at 50% calc(100% - 312.00px), #000 99%, #0000 101%) calc(50% - 240px) 0/480px 100%,
+            radial-gradient(226.42px at 50% calc(100% + 192.00px), #0000 99%, #000 101%) 50% calc(100% - 120px)/480px 100% repeat-x;
+      -webkit-mask: radial-gradient(226.42px at 50% calc(100% - 312.00px), #000 99%, #0000 101%) calc(50% - 240px) 0/480px 100%,
+                   radial-gradient(226.42px at 50% calc(100% + 192.00px), #0000 99%, #000 101%) 50% calc(100% - 120px)/480px 100% repeat-x;
+    }
+
+    /* Hero section */
+    .hero {
+      background: var(--brand-purple);
+      color: var(--brand-beige);
+      text-align: center;
+      padding: 60px 40px 40px;
+      margin-bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero h1 {
+      font-family: 'Averia Serif Libre', serif;
+      font-size: clamp(32px, 8vw, 80px);
+      font-weight: 700;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+    }
+
+    .hero-logo {
+      max-width: 300px;
+      width: 100%;
+      height: auto;
+      margin-top: 20px;
+    }
+
+    .hero p {
+      font-size: 20px;
+      margin-bottom: 30px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 15px 30px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      background: var(--brand-pink);
+      color: var(--brand-grey);
+    }
+
+    .btn-secondary {
+      background: var(--brand-orange);
+      color: var(--brand-beige);
+    }
+
+    .btn-tertiary {
+      background: var(--brand-yellow);
+      color: var(--brand-grey);
+    }
+
+    /* Cards */
+    .card-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+      justify-content: center;
+      margin: 60px auto;
+      max-width: 1200px;
+      padding: 0 20px;
+    }
+
+    .category-card {
+      background: var(--brand-white);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      flex: 1;
+      min-width: 300px;
+      max-width: 350px;
+      border: 3px solid;
+      position: relative;
+      transition: transform 0.3s ease;
+    }
+
+    .category-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .category-card:nth-child(1),
+    .category-card:nth-child(3),
+    .category-card:nth-child(5) {
+      border-color: var(--brand-purple);
+    }
+
+    .category-card:nth-child(2),
+    .category-card:nth-child(4) {
+      border-color: var(--brand-orange);
+    }
+
+    .category-card h3 {
+      font-family: 'Averia Serif Libre', serif;
+      font-size: 28px;
+      margin-bottom: 15px;
+      text-align: center;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .category-card .description {
+      font-size: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .features {
+      margin: 20px 0;
+    }
+
+    .features li {
+      font-size: 14px;
+      margin-bottom: 8px;
+      text-align: center;
+      list-style: none;
+    }
+
+    /* Status badge */
+    .status-badge {
+      position: absolute;
+      top: -15px;
+      right: -15px;
+      background: var(--brand-yellow);
+      color: var(--brand-grey);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      border: 3px solid var(--brand-white);
+    }
+
+    /* Footer */
+    .footer {
+      font-family: 'Averia Serif Libre', serif;
+      background: var(--brand-grey);
+      color: var(--brand-beige);
+      padding: 40px 20px;
+      text-align: center;
+      margin-top: 60px;
+    }
+
+    /* Info section */
+    .info-section {
+      background: var(--brand-white);
+      border-radius: 20px;
+      padding: 40px;
+      margin: 60px auto;
+      max-width: 1000px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    /* iOS safe areas */
+    .safe-top { padding-top: env(safe-area-inset-top); }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+    /* Quote section */
+    .quote-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .quote-box {
+      background: var(--brand-beige);
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      position: relative;
+    }
+
+    .quote-box::before {
+      content: '"';
+      font-family: 'Averia Serif Libre', serif;
+      font-size: 80px;
+      color: var(--brand-pink);
+      opacity: 0.3;
+      position: absolute;
+      top: 10px;
+      left: 30px;
+      line-height: 1;
+    }
+
+    .quote-box::after {
+      content: '"';
+      font-family: 'Averia Serif Libre', serif;
+      font-size: 80px;
+      color: var(--brand-pink);
+      opacity: 0.3;
+      position: absolute;
+      bottom: 10px;
+      right: 30px;
+      line-height: 1;
+      transform: rotate(180deg);
+    }
+
+    .quote-text {
+      font-size: 22px;
+      line-height: 1.8;
+      color: var(--brand-grey);
+      font-style: italic;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .card-container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .category-card:nth-child(odd),
+      .category-card:nth-child(even) {
+        top: 0;
+      }
+
+      .quote-text {
+        font-size: 18px;
+      }
+
+      .quote-box {
+        padding: 30px;
+      }
+
+      .quote-box::before {
+        font-size: 60px;
+        top: 5px;
+        left: 15px;
+      }
+
+      .quote-box::after {
+        font-size: 60px;
+        bottom: 5px;
+        right: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function VoiceTrainingMain() {
+      const [quote, setQuote] = useState('');
+
+      useEffect(() => {
+        // Fetch quotes and select a random one
+        fetch('./quotes.json')
+          .then(response => response.json())
+          .then(quotes => {
+            const randomIndex = Math.floor(Math.random() * quotes.length);
+            setQuote(quotes[randomIndex]);
+          })
+          .catch(error => console.error('Error loading quotes:', error));
+      }, []);
+
+      const categories = [
+        {
+          id: 'transfem',
+          title: '💖 Transfem Voice Training',
+          description: 'Higher register voice practice with specialized exercises',
+          status: 'Available',
+          brandColor: 'var(--brand-pink)',
+          link: './transfem/',
+          features: [
+            '🎵 Pitch raising techniques',
+            '✨ Resonance development',
+            '🗣️ Articulation refinement',
+            '📚 Curated reading passages'
+          ]
+        },
+        {
+          id: 'transmasc',
+          title: '💜 Transmasc Voice Training',
+          description: 'Lower register voice practice and development',
+          status: 'Available',
+          brandColor: 'var(--brand-purple)',
+          link: './transmasc/',
+          features: [
+            '🎯 Lower register development',
+            '💪 Chest voice strengthening',
+            '🎭 Character voice work',
+            '📋 Exercise resource links'
+          ]
+        },
+        {
+          id: 'french',
+          title: '🇫🇷 Français Voice Training',
+          description: 'French language voice practice and pronunciation',
+          status: 'Available',
+          brandColor: 'var(--brand-yellow)',
+          link: './french/',
+          features: [
+            '🗣️ French pronunciation',
+            '🎵 French intonation patterns',
+            '📖 French reading materials',
+            '🔗 Exercise resources'
+          ]
+        },
+        {
+          id: 'spanish',
+          title: '🇪🇸 Español Voice Training',
+          description: 'Spanish language voice practice and pronunciation',
+          status: 'Available',
+          brandColor: 'var(--brand-orange)',
+          link: './spanish/',
+          features: [
+            '🗣️ Spanish pronunciation',
+            '🎵 Spanish rhythm patterns',
+            '📖 Spanish reading materials',
+            '🔗 Exercise resources'
+          ]
+        },
+        {
+          id: 'resources',
+          title: '📋 Resources / Admin',
+          description: 'Helpful resources and community links',
+          status: 'Available',
+          brandColor: 'var(--brand-purple)',
+          link: './resources/',
+          features: [
+            '🎤 Vocal Hygiene Considerations',
+            '📱 App & Website Recommendations',
+            '💬 Discord Community',
+            '📚 Additional Materials'
+          ]
+        }
+      ];
+
+      const handleReadingClick = (category, e) => {
+        e.stopPropagation();
+        if (category.status === 'Available') {
+          window.location.href = category.link;
+        }
+      };
+
+      const handleExercisesClick = (category, e) => {
+        e.stopPropagation();
+        if (category.status === 'Available') {
+          window.location.href = category.link + '?section=exercises';
+        }
+      };
+
+      return (
+        <div className="safe-top safe-bottom">
+          {/* Hero Section */}
+          <div className="hero">
+            <h1>Voice Training Companion</h1>
+            <img src="./assets/Visuals/icones/Logo/Logo move .gif" alt="Voice Training Companion Logo" className="hero-logo" />
+          </div>
+
+          {/* Wave Divider */}
+          <div className="wave-wrapper">
+            <div className="wave"></div>
+          </div>
+
+          {/* Quote Section */}
+          {quote && (
+            <div className="quote-container">
+              <div className="quote-box">
+                <div className="quote-text">{quote}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Categories Grid */}
+          <main>
+            <div className="card-container">
+              {categories.map((category, index) => (
+                <div
+                  key={category.id}
+                  className={`category-card ${
+                    category.status === 'Available' ? '' : 'cursor-not-allowed opacity-75'
+                  }`}
+                >
+                  {/* Status Badge */}
+                  <div className="status-badge" style={{
+                    backgroundColor: category.status === 'Available' ? 'var(--brand-yellow)' : '#e5e7eb',
+                    color: category.status === 'Available' ? 'var(--brand-grey)' : '#9ca3af'
+                  }}>
+                    {category.status}
+                  </div>
+
+                  <h3>{category.title}</h3>
+
+                  {category.status === 'Available' && category.id === 'resources' && (
+                    <a
+                      href={category.link}
+                      className="btn btn-secondary"
+                      style={{display: 'block', textAlign: 'center', marginTop: '30px', textDecoration: 'none'}}
+                    >
+                      📋 View Resources
+                    </a>
+                  )}
+
+                  {category.status === 'Available' && category.id !== 'resources' && (
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '30px'}}>
+                      <button
+                        onClick={(e) => handleReadingClick(category, e)}
+                        className="btn btn-primary"
+                        style={{margin: 0}}
+                      >
+                        📚 Reading
+                      </button>
+                      <button
+                        onClick={(e) => handleExercisesClick(category, e)}
+                        className={`btn ${
+                          index % 3 === 0 ? 'btn-secondary' :
+                          index % 3 === 1 ? 'btn-tertiary' : 'btn-primary'
+                        }`}
+                        style={{margin: 0}}
+                      >
+                        📋 Exercises
+                      </button>
+                    </div>
+                  )}
+
+                  {category.status === 'Coming Soon' && (
+                    <div className="btn" style={{
+                      backgroundColor: '#e5e7eb',
+                      color: '#9ca3af',
+                      display: 'block',
+                      textAlign: 'center',
+                      marginTop: '30px',
+                      cursor: 'not-allowed'
+                    }}>
+                      Coming Soon
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+          </main>
+
+          {/* Footer Wave */}
+          <svg
+            viewBox="0 0 1200 80"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
+            style={{width: '100%', height: '80px', display: 'block', marginTop: '60px'}}
+          >
+            <path
+              d="M0,40 Q150,55 300,40 T600,40 T900,40 T1200,40 L1200,80 L0,80 Z"
+              fill="#ffa2fe"
+            />
+          </svg>
+
+          {/* Footer */}
+          <footer style={{background: '#ffa2fe', color: '#3b1e36', padding: '30px 20px', textAlign: 'center', fontFamily: "'Averia Serif Libre', serif"}}>
+            <p style={{fontSize: '24px', fontWeight: '700', marginBottom: '0', textTransform: 'uppercase'}}>
+              <a href="https://www.seattlevoicelab.com/" target="_blank" rel="noopener noreferrer" style={{color: '#3b1e36', textDecoration: 'none', fontWeight: '700'}}>
+                Seattle Voice Lab
+              </a>
+            </p>
+          </footer>
+        </div>
+      );
+    }
+
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<VoiceTrainingMain />);
+  </script>
+</body>
+</html>

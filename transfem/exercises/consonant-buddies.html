@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Consonant Buddies — Voice Training Companion</title>
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--brand-beige);
+      color: var(--brand-grey);
+      line-height: 1.8;
+      letter-spacing: 0.02em;
+    }
+
+    .header {
+      background: var(--brand-pink);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(255, 162, 254, 0.3);
+    }
+
+    .header-content {
+      max-width: 980px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-button {
+      padding: 10px 20px;
+      background: white;
+      color: var(--brand-pink);
+      border: 2px solid white;
+      border-radius: 25px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .back-button:hover {
+      background: var(--brand-purple);
+      color: white;
+      border-color: var(--brand-purple);
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 16px 56px;
+    }
+
+    .header-image {
+      text-align: center;
+      margin: 32px auto 24px;
+      max-width: 980px;
+      padding: 0 20px;
+    }
+
+    .header-image img {
+      max-width: 300px;
+      width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    h1 {
+      font-family: 'Averia Serif Libre', serif;
+      font-weight: 700;
+      text-align: center;
+      font-size: clamp(28px, 6vw, 40px);
+      margin: 0 0 12px;
+      color: var(--brand-purple);
+      text-transform: uppercase;
+    }
+
+    .coach {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--brand-grey);
+      text-align: center;
+      margin: 0 0 32px;
+      background: white;
+      padding: 24px;
+      border-radius: 20px;
+      border: 3px solid var(--brand-pink);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      line-height: 1.8;
+      letter-spacing: 0.03em;
+    }
+
+    /* Two big groups side-by-side */
+    .rows {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      border: 3px solid;
+    }
+
+    .card.pink {
+      background: var(--brand-white);
+      border-color: var(--brand-pink);
+    }
+
+    .card.lilac {
+      background: var(--brand-white);
+      border-color: var(--brand-purple);
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .panel {
+      position: relative;
+      padding-top: 46px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .tab {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      background: var(--brand-purple);
+      color: white;
+      font-weight: 800;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      text-transform: capitalize;
+      letter-spacing: 0.5px;
+      font-size: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 18px;
+    }
+
+    colgroup col:first-child {
+      width: 36%;
+    }
+
+    colgroup col:last-child {
+      width: 64%;
+    }
+
+    tbody tr:nth-child(odd) td {
+      background: var(--brand-beige);
+    }
+
+    tbody tr:nth-child(even) td {
+      background: var(--brand-white);
+    }
+
+    td {
+      padding: 14px 16px;
+      vertical-align: middle;
+      border-left: 2px solid var(--brand-pink);
+      border-top: 2px solid var(--brand-pink);
+      line-height: 1.8;
+    }
+
+    tr:last-child td {
+      border-bottom: 2px solid var(--brand-pink);
+    }
+
+    td:last-child {
+      border-right: 2px solid var(--brand-pink);
+    }
+
+    .phoneme {
+      color: var(--brand-purple);
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .ex {
+      display: block;
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+    }
+
+    .ex:last-child {
+      margin-bottom: 0;
+    }
+
+    .ex b {
+      font-weight: 900;
+      color: #000000;
+    }
+
+    /* round table corners */
+    tbody tr:first-child td:first-child {
+      border-top-left-radius: 10px;
+    }
+
+    tbody tr:first-child td:last-child {
+      border-top-right-radius: 10px;
+    }
+
+    tbody tr:last-child td:first-child {
+      border-bottom-left-radius: 10px;
+    }
+
+    tbody tr:last-child td:last-child {
+      border-bottom-right-radius: 10px;
+    }
+
+    /* Passage */
+    .story {
+      font-size: 20px;
+      line-height: 2;
+      margin-top: 6px;
+      border: 3px solid var(--brand-pink);
+      border-radius: 20px;
+      padding: 28px 32px;
+      background: white;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      letter-spacing: 0.02em;
+      word-spacing: 0.08em;
+    }
+
+    .story p {
+      margin-bottom: 24px;
+    }
+
+    .story p:last-child {
+      margin-bottom: 0;
+    }
+
+    .story b {
+      font-weight: 900;
+      color: #000000;
+    }
+
+    @media (max-width: 900px) {
+      .rows {
+        grid-template-columns: 1fr;
+      }
+
+      .mini-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .wrap {
+        padding: 20px 12px 40px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      .story {
+        font-size: 18px;
+        padding: 20px 22px;
+      }
+
+      table {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <a href="javascript:history.back()" class="back-button">← Back to Exercises</a>
+      <div>
+        <h1 style="margin: 0; font-size: 24px; text-align: left; color: white;">Consonant Buddies</h1>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Image -->
+  <div class="header-image">
+    <img src="../../assets/Visuals/icones/Transfemme/Consonant Buddies.pdf.png" alt="Consonant Buddies">
+  </div>
+
+  <main class="wrap">
+    <p class="coach">Work on the forward/lighter placement of the consonant buddies, then implement into the passage.</p>
+
+    <section class="rows" aria-label="Tables">
+
+      <!-- LEFT BLOCK (pink) -->
+      <div class="card pink">
+        <div class="mini-grid">
+
+          <!-- Unvoiced -->
+          <div class="panel">
+            <div class="tab">Unvoiced</div>
+            <table>
+              <colgroup><col><col></colgroup>
+              <tbody>
+                <tr><td class="phoneme">/p/</td><td><span class="ex"><b>p</b>eanut</span></td></tr>
+                <tr><td class="phoneme">/t/</td><td><span class="ex"><b>t</b>iger</span></td></tr>
+                <tr><td class="phoneme">/s/</td><td><span class="ex"><b>s</b>illy</span></td></tr>
+                <tr><td class="phoneme">/sh/</td><td><span class="ex"><b>sh</b>irt</span></td></tr>
+                <tr><td class="phoneme">/ch/</td><td><span class="ex"><b>ch</b>erry</span></td></tr>
+                <tr><td class="phoneme">/k/</td><td><span class="ex"><b>k</b>angaroo</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- voiced -->
+          <div class="panel">
+            <div class="tab">voiced</div>
+            <table>
+              <colgroup><col><col></colgroup>
+              <tbody>
+                <tr><td class="phoneme">/b/</td><td><span class="ex"><b>b</b>utter</span></td></tr>
+                <tr><td class="phoneme">/d/</td><td><span class="ex"><b>d</b>rab</span></td></tr>
+                <tr><td class="phoneme">/z/</td><td><span class="ex"><b>z</b>ebra</span></td></tr>
+                <tr><td class="phoneme">/zh/</td><td><span class="ex"><b>zh</b>uzhed</span></td></tr>
+                <tr><td class="phoneme">/j/</td><td><span class="ex"><b>j</b>udge</span></td></tr>
+                <tr><td class="phoneme">/g/</td><td><span class="ex"><b>g</b>ood</span></td></tr>
+                <tr><td class="phoneme">/n/</td><td><span class="ex"><b>n</b>ever</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RIGHT BLOCK (lilac) -->
+      <div class="card lilac">
+        <div class="mini-grid">
+
+          <!-- Unvoiced -->
+          <div class="panel">
+            <div class="tab">Unvoiced</div>
+            <table>
+              <colgroup><col><col></colgroup>
+              <tbody>
+                <tr>
+                  <td class="phoneme">/f/</td>
+                  <td>
+                    <span class="ex"><b>f</b>unky</span>
+                    <span class="ex">stu<b>ff</b></span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="phoneme">/th/</td>
+                  <td>
+                    <span class="ex"><b>th</b>in</span>
+                    <span class="ex">tee<b>th</b></span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- voiced -->
+          <div class="panel">
+            <div class="tab">voiced</div>
+            <table>
+              <colgroup><col><col></colgroup>
+              <tbody>
+                <tr>
+                  <td class="phoneme">/v/</td>
+                  <td>
+                    <span class="ex"><b>v</b>est</span>
+                    <span class="ex">slee<b>v</b>es</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="phoneme">/th/</td>
+                  <td>
+                    <span class="ex"><b>th</b>at</span>
+                    <span class="ex">wi<b>th</b></span>
+                  </td>
+                </tr>
+                <tr><td class="phoneme">/L/</td><td><span class="ex"><b>l</b>oves</span></td></tr>
+                <tr><td class="phoneme">/r/</td><td><span class="ex"><b>r</b>eally</span></td></tr>
+                <tr><td class="phoneme">/w/</td><td><span class="ex"><b>w</b>hen</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Passage with letter-level bolding through "sandwich." -->
+    <section class="story" aria-label="Passage">
+      <p>
+        <b>Th</b>e <b>s</b>illy <b>z</b>e<b>br</b>a an<b>d</b>
+        <b>d</b>rab <b>t</b>i<b>g</b>e<b>r</b> a<b>r</b>e
+        <b>b</b>rough<b>t</b> be<b>f</b>o<b>r</b>e
+        <b>J</b>u<b>dg</b>e <b>Ch</b>e<b>rr</b>y, <b>th</b>e
+        <b>K</b>an<b>g</b>a<b>r</b>oo.
+        <b>Th</b>e <b>g</b>oo<b>d</b> <b>j</b>u<b>dg</b>e is
+        <b>b</b>u<b>s</b>y, ea<b>t</b>in<b>g</b> <b>h</b>i<b>s</b>
+        <b>f</b>a<b>v</b>ori<b>t</b>e <b>p</b>eanu<b>t</b>
+        <b>b</b>u<b>tt</b>e<b>r</b> <b>s</b>and<b>w</b>i<b>ch</b>.
+      </p>
+      <p>
+        He never misses his sandwiches. He also really loves his favorite zealously zhuzhed
+        shirt sleeves and funky vest. The silly zebra and drab tiger nod when they see the
+        shirt sleeves, and cry aloud, "That's thin"! Judge Cherry tells them to "shush"
+        and take themselves back outside!
+      </p>
+    </section>
+
+  </main>
+</body>
+</html>

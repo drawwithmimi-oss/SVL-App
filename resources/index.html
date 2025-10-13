@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#904dff" />
+  <title>Voice Training Companion - Resources / Admin</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="../manifest.json" />
+
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="../assets/Visuals/icones/Logo/logosquare.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Voice Trainer" />
+
+  <!-- React / Babel / Tailwind -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--brand-beige);
+      color: var(--brand-grey);
+      line-height: 1.6;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    /* Typography */
+    .brand-heading {
+      font-weight: 700;
+      color: var(--brand-grey);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Cards */
+    .card-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+      justify-content: center;
+      margin: 60px auto;
+      max-width: 1200px;
+      padding: 0 20px;
+    }
+
+    .resource-card {
+      background: var(--brand-white);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      flex: 1;
+      min-width: 300px;
+      max-width: 350px;
+      border: 3px solid var(--brand-purple);
+      position: relative;
+      transition: transform 0.3s ease;
+    }
+
+    .resource-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .resource-card.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .resource-card.disabled:hover {
+      transform: none;
+    }
+
+    .resource-card h3 {
+      font-family: 'Averia Serif Libre', serif;
+      font-size: 24px;
+      margin-bottom: 15px;
+      text-align: center;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .resource-card .description {
+      font-size: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+      color: var(--brand-grey);
+      opacity: 0.9;
+    }
+
+    /* Status badge */
+    .status-badge {
+      position: absolute;
+      top: -15px;
+      right: -15px;
+      background: var(--brand-yellow);
+      color: var(--brand-grey);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      border: 3px solid var(--brand-white);
+    }
+
+    .status-badge.coming-soon {
+      background: #e5e7eb;
+      color: #9ca3af;
+    }
+
+    /* Resource icon styling */
+    .discord-icon {
+      max-width: 80px;
+      max-height: 80px;
+      width: auto;
+      height: auto;
+      margin: 0 auto 20px;
+      display: block;
+      object-fit: contain;
+    }
+
+    /* Button */
+    .btn {
+      display: inline-block;
+      padding: 15px 30px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+      width: 100%;
+      text-align: center;
+      background: var(--brand-purple);
+      color: var(--brand-white);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn.disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Back button */
+    .back-button {
+      display: inline-block;
+      padding: 12px 24px;
+      border-radius: 25px;
+      text-decoration: none;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 14px;
+      border: 2px solid var(--brand-white);
+      color: var(--brand-white);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .back-button:hover {
+      background: var(--brand-white);
+      color: var(--brand-purple);
+    }
+
+    /* iOS safe areas */
+    .safe-top { padding-top: env(safe-area-inset-top); }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .card-container {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    function ResourcesPage() {
+      const resources = [
+        {
+          id: 'vocal-hygiene',
+          title: 'Vocal Hygiene Considerations',
+          description: 'For Students',
+          status: 'available',
+          icon: '../assets/Visuals/icones/Admin/Vocal Hygiene Considerations - For Students.png',
+          link: './vocal-hygiene.html',
+          buttonText: '📖 Read'
+        },
+        {
+          id: 'app-recommendations',
+          title: 'App and Website Recommendations',
+          description: 'Helpful resources for voice training',
+          status: 'available',
+          icon: '../assets/Visuals/icones/Admin/App and Website Recommendations.png',
+          link: './app-recommendations.html',
+          buttonText: '📱 View Resources'
+        },
+        {
+          id: 'student-portal',
+          title: 'Student Portal',
+          description: 'Access your Seattle Voice Lab account',
+          status: 'available',
+          icon: '../assets/Visuals/icones/Logo/jane logo.svg',
+          link: 'https://seattlevoicelab.janeapp.com/account',
+          buttonText: '🔐 Go to Portal'
+        },
+        {
+          id: 'guided-session-notes',
+          title: 'Guided Session Notes 📝',
+          description: 'Take notes during your lessons and/or your practice sessions.',
+          status: 'available',
+          icon: '../assets/Visuals/icones/Admin/Guided Session Notes.png',
+          link: 'https://drive.google.com/file/d/10YbhNANm370sAIlFzd--3Pk4ykZjHHgh/view?usp=share_link',
+          buttonText: '📄 Download PDF'
+        },
+        {
+          id: 'practice-log',
+          title: 'Practice Log',
+          description: 'Take notes during your practice sessions.',
+          status: 'available',
+          icon: '../assets/Visuals/icones/Admin/Practice Log.png',
+          link: 'https://drive.google.com/file/d/1WissTuqgaJZhG-JtSA6YwJYkGAKzL_x4/view?usp=share_link',
+          buttonText: '📄 Download PDF'
+        },
+        {
+          id: 'install-guide',
+          title: 'Add App to Home Screen',
+          description: 'Install the app on your device for quick access',
+          status: 'available',
+          icon: '../assets/Visuals/icones/Logo/logosquare.png',
+          link: './install-guide.html',
+          buttonText: '📱 View Instructions'
+        },
+        {
+          id: 'discord',
+          title: 'Join our Discord Server',
+          description: 'Connect with the Seattle Voice Lab community',
+          status: 'available',
+          icon: '../assets/Visuals/icones/Logo/Icon_Discord.png',
+          link: 'https://discord.gg/seattlevoicelab',
+          buttonText: '🔗 Join Discord'
+        }
+      ];
+
+      const handleCardClick = (resource) => {
+        if (resource.status === 'available' && resource.link) {
+          window.open(resource.link, '_blank', 'noopener,noreferrer');
+        }
+      };
+
+      return (
+        <div className="min-h-screen safe-top safe-bottom" style={{backgroundColor: 'var(--brand-beige)'}}>
+          {/* Header */}
+          <header className="sticky top-0 z-50 safe-top" style={{backgroundColor: 'var(--brand-purple)', color: 'white', boxShadow: '0 4px 20px rgba(144, 77, 255, 0.3)'}}>
+            <div className="px-6 py-4">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => window.location.href = '../'}
+                  className="back-button"
+                >
+                  ← Back to Main
+                </button>
+                <div>
+                  <h1 className="text-3xl font-bold uppercase tracking-wide text-white drop-shadow-md" style={{fontFamily: "'Averia Serif Libre', serif"}}>📋 Resources / Admin</h1>
+                  <p className="text-lg font-medium text-white opacity-90" style={{fontFamily: "'Averia Serif Libre', serif"}}>Helpful resources and community links</p>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content */}
+          <main>
+            <div className="card-container">
+              {resources.map((resource) => (
+                <div
+                  key={resource.id}
+                  className={`resource-card ${resource.status === 'coming-soon' ? 'disabled' : ''}`}
+                  onClick={() => handleCardClick(resource)}
+                  style={{cursor: resource.status === 'available' ? 'pointer' : 'not-allowed'}}
+                >
+                  {/* Status Badge */}
+                  <div className={`status-badge ${resource.status === 'coming-soon' ? 'coming-soon' : ''}`}>
+                    {resource.status === 'available' ? 'Available' : 'Coming Soon'}
+                  </div>
+
+                  {/* Discord Icon */}
+                  {resource.icon && (
+                    <img src={resource.icon} alt="Discord" className="discord-icon" />
+                  )}
+
+                  <h3>{resource.title}</h3>
+                  <div className="description">{resource.description}</div>
+
+                  {/* Button */}
+                  {resource.status === 'available' && resource.link ? (
+                    <a
+                      href={resource.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {resource.buttonText}
+                    </a>
+                  ) : (
+                    <div className="btn disabled">
+                      Coming Soon
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Feedback Form Section */}
+            <div style={{
+              maxWidth: '600px',
+              margin: '40px auto 60px',
+              padding: '0 20px'
+            }}>
+              <div style={{
+                borderTop: '2px solid var(--brand-pink)',
+                paddingTop: '32px'
+              }}>
+                <div style={{
+                  textAlign: 'center',
+                  marginBottom: '20px'
+                }}>
+                  <p style={{
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: 'var(--brand-grey)',
+                    opacity: '0.7'
+                  }}>
+                    Help us improve the app
+                  </p>
+                </div>
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSfMxKnAESHW0JMWRSVcQZ7JLieXiQ43oJX6jmb48BzDuNpiVA/viewform?usp=dialog"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'block',
+                    textAlign: 'center',
+                    padding: '12px 24px',
+                    borderRadius: '10px',
+                    fontWeight: '500',
+                    fontSize: '14px',
+                    transition: 'all 0.3s ease',
+                    backgroundColor: 'var(--brand-beige)',
+                    color: 'var(--brand-grey)',
+                    textDecoration: 'none',
+                    border: '2px solid var(--brand-pink)',
+                    boxShadow: '0 2px 8px rgba(255, 162, 254, 0.2)'
+                  }}
+                  onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                >
+                  💬 Submit Feedback or Report Issue
+                </a>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<ResourcesPage />);
+  </script>
+</body>
+</html>

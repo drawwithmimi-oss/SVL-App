@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#904dff" />
+  <title>Install Guide - Voice Training Companion</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="../manifest.json" />
+
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="../assets/Visuals/icones/Logo/logosquare.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Voice Trainer" />
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--brand-beige);
+      color: var(--brand-grey);
+      line-height: 1.8;
+      letter-spacing: 0.02em;
+    }
+
+    .header {
+      background: var(--brand-purple);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(144, 77, 255, 0.3);
+    }
+
+    .header-content {
+      max-width: 980px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-button {
+      padding: 10px 20px;
+      background: white;
+      color: var(--brand-purple);
+      border: 2px solid white;
+      border-radius: 25px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .back-button:hover {
+      background: var(--brand-pink);
+      color: white;
+      border-color: var(--brand-pink);
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 20px 72px;
+    }
+
+    .header-image {
+      text-align: center;
+      margin: 32px auto 24px;
+    }
+
+    .header-image img {
+      max-width: 220px;
+      width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    h1 {
+      font-family: 'Averia Serif Libre', serif;
+      font-weight: 700;
+      text-align: center;
+      font-size: clamp(28px, 6vw, 40px);
+      margin: 0 0 16px;
+      color: var(--brand-purple);
+      text-transform: uppercase;
+    }
+
+    .intro {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--brand-grey);
+      text-align: center;
+      margin: 0 0 32px;
+      background: white;
+      padding: 24px;
+      border-radius: 20px;
+      border: 3px solid var(--brand-pink);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      line-height: 1.8;
+    }
+
+    .platform-section {
+      background: white;
+      border-radius: 20px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      border: 3px solid var(--brand-purple);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .platform-section h2 {
+      font-family: 'Averia Serif Libre', serif;
+      font-size: 28px;
+      color: var(--brand-purple);
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+
+    .platform-section ol {
+      margin-left: 24px;
+      font-size: 18px;
+      line-height: 2;
+    }
+
+    .platform-section li {
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .platform-section strong {
+      color: var(--brand-purple);
+      font-weight: 700;
+    }
+
+    .note {
+      background: var(--brand-beige);
+      border-left: 4px solid var(--brand-pink);
+      padding: 16px 20px;
+      margin-top: 16px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-style: italic;
+    }
+
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .wrap {
+        padding: 20px 12px 40px;
+      }
+
+      .platform-section {
+        padding: 20px 24px;
+      }
+
+      .platform-section h2 {
+        font-size: 24px;
+      }
+
+      .platform-section ol {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <a href="./index.html" class="back-button">← Back to Resources</a>
+      <div>
+        <h1 style="margin: 0; font-size: 24px; text-align: left; color: white;">Install Guide</h1>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Image -->
+  <div class="header-image">
+    <img src="../assets/Visuals/icones/Logo/logosquare.png" alt="Voice Training Companion">
+  </div>
+
+  <main class="wrap">
+    <h1>Add App to Home Screen</h1>
+
+    <div class="intro">
+      Install Voice Training Companion on your device for quick access, full-screen experience, and app-like functionality.
+    </div>
+
+    <!-- iPhone / iPad -->
+    <section class="platform-section">
+      <h2>📱 iPhone / iPad (Safari)</h2>
+      <ol>
+        <li>Open <strong>Safari</strong> and go to Voice Training Companion.</li>
+        <li>Tap the <strong>Share</strong> button (square with up arrow).</li>
+        <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+        <li>Tap <strong>Add</strong>.</li>
+      </ol>
+      <div class="note">
+        That's it! Launch it like an app from your Home Screen. (Safari is required for adding; other iOS browsers can open it after installation.)
+      </div>
+    </section>
+
+    <!-- Android Chrome -->
+    <section class="platform-section">
+      <h2>🤖 Android (Chrome)</h2>
+      <ol>
+        <li>Open <strong>Chrome</strong> and visit the site.</li>
+        <li>Tap the <strong>⋮</strong> (menu) button.</li>
+        <li>Tap <strong>Add to Home screen</strong> (or <strong>Install app</strong>).</li>
+        <li>Confirm <strong>Add</strong> / <strong>Install</strong>.</li>
+      </ol>
+      <div class="note">
+        You'll get an icon on your Home Screen that opens full-screen with app-like behavior.
+      </div>
+    </section>
+
+    <!-- Android Samsung -->
+    <section class="platform-section">
+      <h2>🤖 Android (Samsung Internet)</h2>
+      <ol>
+        <li>Open <strong>Samsung Internet</strong> and go to the site.</li>
+        <li>Tap the <strong>≡</strong> (menu) button.</li>
+        <li>Tap <strong>Add page to</strong> → <strong>Home screen</strong>.</li>
+        <li>Tap <strong>Add</strong>.</li>
+      </ol>
+    </section>
+
+    <!-- Desktop Chrome / Edge -->
+    <section class="platform-section">
+      <h2>💻 Desktop (Chrome / Edge)</h2>
+      <ol>
+        <li><strong>Chrome:</strong> Look for the <strong>Install</strong> icon (⊕) in the address bar, or click <strong>⋮</strong> → <strong>Install app</strong>.</li>
+        <li><strong>Edge:</strong> Click <strong>⋯</strong> → <strong>Apps</strong> → <strong>Install this site as an app</strong>.</li>
+      </ol>
+      <div class="note">
+        Installed apps appear like native apps with their own window and can be pinned to your taskbar.
+      </div>
+    </section>
+  </main>
+</body>
+</html>

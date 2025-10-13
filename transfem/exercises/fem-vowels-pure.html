@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fem Vowels – Pure — Voice Training Companion</title>
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--brand-beige);
+      color: var(--brand-grey);
+      line-height: 1.8;
+      letter-spacing: 0.02em;
+    }
+
+    .header {
+      background: var(--brand-pink);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(255, 162, 254, 0.3);
+    }
+
+    .header-content {
+      max-width: 980px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-button {
+      padding: 10px 20px;
+      background: white;
+      color: var(--brand-pink);
+      border: 2px solid white;
+      border-radius: 25px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .back-button:hover {
+      background: var(--brand-purple);
+      color: white;
+      border-color: var(--brand-purple);
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 16px 56px;
+    }
+
+    .header-image {
+      text-align: center;
+      margin: 32px auto 24px;
+      max-width: 980px;
+      padding: 0 20px;
+    }
+
+    .header-image img {
+      max-width: 300px;
+      width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    h1 {
+      font-family: 'Averia Serif Libre', serif;
+      font-weight: 700;
+      text-align: center;
+      font-size: clamp(28px, 6vw, 40px);
+      margin: 0 0 16px;
+      color: var(--brand-purple);
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--brand-grey);
+      text-align: center;
+      margin: 0 0 32px;
+      background: white;
+      padding: 24px;
+      border-radius: 20px;
+      border: 3px solid var(--brand-pink);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      line-height: 1.8;
+      letter-spacing: 0.03em;
+    }
+
+    .card {
+      background: var(--brand-white);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      border: 3px solid var(--brand-pink);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 8px;
+      font-size: 18px;
+      margin: 0 auto;
+    }
+
+    thead th {
+      background: var(--brand-purple);
+      color: white;
+      font-weight: 800;
+      padding: 14px 10px;
+      text-align: center;
+      font-size: 18px;
+      letter-spacing: 0.5px;
+      border-radius: 12px;
+    }
+
+    thead th:first-child {
+      background: transparent;
+      color: var(--brand-grey);
+    }
+
+    thead th span {
+      display: block;
+      font-weight: 600;
+      font-size: 12px;
+      opacity: 0.95;
+      margin-top: 4px;
+    }
+
+    tbody th {
+      background: var(--brand-pink);
+      color: var(--brand-grey);
+      font-weight: 800;
+      padding: 12px;
+      text-align: center;
+      font-size: 20px;
+      border-radius: 12px;
+      min-width: 60px;
+    }
+
+    tbody td {
+      padding: 12px 10px;
+      text-align: center;
+      vertical-align: middle;
+      border: 2px solid var(--brand-pink);
+      background: var(--brand-beige);
+      font-weight: 600;
+      line-height: 1.8;
+      border-radius: 12px;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: var(--brand-white);
+    }
+
+    .practice {
+      background: white;
+      border-radius: 20px;
+      padding: 28px 32px;
+      border: 3px solid var(--brand-purple);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .practice p {
+      font-size: 20px;
+      line-height: 2;
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+      word-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .practice p:last-child {
+      margin-bottom: 0;
+    }
+
+    .practice p::before {
+      content: '🎵 ';
+      margin-right: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .wrap {
+        padding: 20px 12px 40px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      table {
+        font-size: 15px;
+      }
+
+      thead th {
+        font-size: 15px;
+        padding: 10px 6px;
+      }
+
+      tbody th {
+        font-size: 18px;
+        padding: 10px 6px;
+      }
+
+      tbody td {
+        padding: 10px 6px;
+        font-size: 14px;
+      }
+
+      .practice p {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <a href="javascript:history.back()" class="back-button">← Back to Exercises</a>
+      <div>
+        <h1 style="margin: 0; font-size: 24px; text-align: left; color: white;">Fem Vowels – Pure</h1>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Image -->
+  <div class="header-image">
+    <img src="../../assets/Visuals/icones/Transfemme/Fem Vowels  pure .png" alt="Fem Vowels - Pure">
+  </div>
+
+  <main class="wrap">
+    <h1>Fem Vowels – Pure</h1>
+    <p class="subtitle">Glide from Nee to the next diphthong, keeping forward placement and tonal consistency.</p>
+
+    <!-- Table 1: EE / IH / EH / AD / OO -->
+    <section class="card">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>EE</th>
+            <th>IH</th>
+            <th>EH</th>
+            <th>AD</th>
+            <th>OO</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>E</th>
+            <td>NEE-YEE</td>
+            <td>NEE-IH</td>
+            <td>NEE-EH</td>
+            <td>NEE-AD</td>
+            <td>NEE-YOO</td>
+          </tr>
+          <tr>
+            <th>A</th>
+            <td>NEE-AY-EE</td>
+            <td>NEE-AY-IH</td>
+            <td>NEE-AY-EH</td>
+            <td>NEE-AY-AD</td>
+            <td>NEE-AY-OO</td>
+          </tr>
+          <tr>
+            <th>I</th>
+            <td>NEE-EYE-EE</td>
+            <td>NEE-EYE-IH</td>
+            <td>NEE-EYE-EH</td>
+            <td>NEE-EYE-AD</td>
+            <td>NEE-EYE-OO</td>
+          </tr>
+          <tr>
+            <th>O</th>
+            <td>NEE-OH-EE</td>
+            <td>NEE-OH-IH</td>
+            <td>NEE-OH-EH</td>
+            <td>NEE-OH-AD</td>
+            <td>NEE-OH-OO</td>
+          </tr>
+          <tr>
+            <th>U</th>
+            <td>NEE-YOU-EE</td>
+            <td>NEE-YOU-IH</td>
+            <td>NEE-YOU-EH</td>
+            <td>NEE-YOU-AD</td>
+            <td>NEE-YOU-WOO</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Table 2: SCHWA / UH / ER / AW / AH -->
+    <section class="card">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>SCHWA<span>(like "put")</span></th>
+            <th>UH</th>
+            <th>ER</th>
+            <th>AW</th>
+            <th>AH</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>E</th>
+            <td>NEE-U</td>
+            <td>NEE-UH</td>
+            <td>NEE-ER</td>
+            <td>NEE-AW</td>
+            <td>NEE-AH</td>
+          </tr>
+          <tr>
+            <th>A</th>
+            <td>NEE-AY-U</td>
+            <td>NEE-AY-UH</td>
+            <td>NEE-AY-ER</td>
+            <td>NEE-AY-AW</td>
+            <td>NEE-AY-AH</td>
+          </tr>
+          <tr>
+            <th>I</th>
+            <td>NEE-EYE-U</td>
+            <td>NEE-EYE-UH</td>
+            <td>NEE-EYE-ER</td>
+            <td>NEE-EYE-AW</td>
+            <td>NEE-EYE-AH</td>
+          </tr>
+          <tr>
+            <th>O</th>
+            <td>NEE-OH-U</td>
+            <td>NEE-OH-UH</td>
+            <td>NEE-OH-ER</td>
+            <td>NEE-OH-AW</td>
+            <td>NEE-OH-AH</td>
+          </tr>
+          <tr>
+            <th>U</th>
+            <td>NEE-YOU-U</td>
+            <td>NEE-YOU-UH</td>
+            <td>NEE-YOU-ER</td>
+            <td>NEE-YOU-AW</td>
+            <td>NEE-YOU-AH</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Practice lines -->
+    <section class="practice">
+      <p>NEE – when the sunlight strikes</p>
+      <p>NEE – raindrops in the air</p>
+      <p>NEE – they act as a prism</p>
+      <p>NEE – and form a rainbow</p>
+    </section>
+
+  </main>
+</body>
+</html>

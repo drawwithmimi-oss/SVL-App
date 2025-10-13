@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tongue Exercises For Students — Voice Training Companion</title>
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--brand-beige);
+      color: var(--brand-grey);
+      line-height: 1.8;
+      letter-spacing: 0.02em;
+    }
+
+    .header {
+      background: var(--brand-pink);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(255, 162, 254, 0.3);
+    }
+
+    .header-content {
+      max-width: 980px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-button {
+      padding: 10px 20px;
+      background: white;
+      color: var(--brand-pink);
+      border: 2px solid white;
+      border-radius: 25px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .back-button:hover {
+      background: var(--brand-purple);
+      color: white;
+      border-color: var(--brand-purple);
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 16px 56px;
+    }
+
+    h1 {
+      font-family: 'Averia Serif Libre', serif;
+      font-weight: 700;
+      text-align: center;
+      font-size: clamp(28px, 6vw, 40px);
+      margin: 0 0 16px;
+      color: var(--brand-purple);
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--brand-grey);
+      text-align: center;
+      margin: 0 0 32px;
+      background: white;
+      padding: 24px;
+      border-radius: 20px;
+      border: 3px solid var(--brand-pink);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      line-height: 1.8;
+      letter-spacing: 0.03em;
+    }
+
+    .video-container {
+      background: var(--brand-white);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      border: 3px solid var(--brand-pink);
+      margin-bottom: 24px;
+    }
+
+    .video-wrapper {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      height: 0;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #000;
+    }
+
+    .video-wrapper iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .video-info {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--brand-beige);
+      border-radius: 12px;
+      border-left: 4px solid var(--brand-purple);
+    }
+
+    .video-info p {
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--brand-grey);
+      margin: 0;
+    }
+
+    .video-info strong {
+      color: var(--brand-purple);
+      font-weight: 700;
+    }
+
+    .fallback-link {
+      text-align: center;
+      margin-top: 24px;
+    }
+
+    .fallback-link a {
+      display: inline-block;
+      padding: 14px 28px;
+      background: var(--brand-purple);
+      color: white;
+      text-decoration: none;
+      border-radius: 25px;
+      font-weight: 700;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(144, 77, 255, 0.3);
+    }
+
+    .fallback-link a:hover {
+      background: var(--brand-pink);
+      color: var(--brand-grey);
+      transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .wrap {
+        padding: 20px 12px 40px;
+      }
+
+      .video-container {
+        padding: 20px;
+      }
+
+      .video-info {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <a href="javascript:history.back()" class="back-button">← Back to Exercises</a>
+      <div>
+        <h1 style="margin: 0; font-size: 24px; text-align: left; color: white;">Tongue Exercises</h1>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <h1>Tongue Exercises For Students</h1>
+    <p class="subtitle">Try these exercises to release tongue tension</p>
+
+    <section class="video-container">
+      <div class="video-wrapper">
+        <iframe
+          src="https://drive.google.com/file/d/1uST6iPT8sfN4EuU3NurdQjrYyWPqjrHm/preview"
+          allow="autoplay"
+          allowfullscreen>
+        </iframe>
+      </div>
+
+      <div class="video-info">
+        <p><strong>💡 Tip:</strong> Watch the video and follow along with each exercise. These movements help reduce tension and improve articulation for voice training.</p>
+      </div>
+    </section>
+
+    <div class="fallback-link">
+      <a href="https://drive.google.com/file/d/1uST6iPT8sfN4EuU3NurdQjrYyWPqjrHm/view?usp=sharing" target="_blank" rel="noopener noreferrer">
+        🎬 Open Video in New Tab
+      </a>
+    </div>
+
+  </main>
+</body>
+</html>

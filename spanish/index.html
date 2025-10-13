@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#904dff" />
+  <title>Entrenamiento Vocal en Español</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="../manifest.json" />
+
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="../assets/Visuals/icones/Logo/logosquare.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Voice Trainer" />
+
+  <!-- React / Babel / Tailwind -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-blue: #6f81ff;
+    }
+
+    /* Dyslexia-friendly spacing; keep the simple, readable sans font you chose */
+    .reading-text {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 2;
+      letter-spacing: 0.05em;
+      word-spacing: 0.2em;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    /* Touch targets */
+    button { min-height: 44px; min-width: 44px; }
+
+    /* Cards with rounded corners */
+    .training-card {
+      transition: all 0.3s ease;
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(59, 30, 54, 0.1);
+    }
+
+    .training-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(59, 30, 54, 0.15);
+    }
+
+    /* Floating bubble */
+    .floating-bubble {
+      position: fixed;
+      right: 20px;
+      bottom: 80px;
+      z-index: 1000;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .pitch-indicator { transition: all 0.3s ease; }
+
+    /* Prevent accidental selection */
+    button {
+      -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Typography */
+    .brand-heading {
+      font-weight: 700;
+      color: var(--brand-grey);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* iOS safe areas */
+    .safe-top { padding-top: env(safe-area-inset-top); }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useCallback } = React;
+
+    function VoiceTrainingReader() {
+      const [isDronePlaying, setIsDronePlaying] = useState(false);
+      const [selectedNote, setSelectedNote] = useState('C4');
+      const [currentPitch, setCurrentPitch] = useState(0);
+      const [micPermission, setMicPermission] = useState('pending');
+      const [audioInitialized, setAudioInitialized] = useState(false);
+      const [showBubble, setShowBubble] = useState(false);
+      const [bubbleExpanded, setBubbleExpanded] = useState(false);
+      const [selectedReading, setSelectedReading] = useState(null);
+      const [fontSize, setFontSize] = useState('large');
+
+      // Recording state
+      const [isRecording, setIsRecording] = useState(false);
+      const [recordings, setRecordings] = useState([]);
+      const [lastRecording, setLastRecording] = useState(null);
+      const [showRecordingsModal, setShowRecordingsModal] = useState(false);
+      const mediaRecorderRef = useRef(null);
+      const recordingChunksRef = useRef([]);
+
+      /* Check URL params on load to auto-select exercises */
+      useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('section') === 'exercises') {
+          const exercisesReading = readings.find(r => r.id === 'exercises-link');
+          if (exercisesReading) {
+            setSelectedReading(exercisesReading);
+          }
+        }
+      }, []);
+
+      /* Volume 0–200% of safe base gain (0.2) */
+      const [volumePct, setVolumePct] = useState(100);
+      const baseGain = 0.2;
+
+      /* NEW: timbre + gentle loudness helpers */
+      const [timbre, setTimbre] = useState('sine');      // sine, triangle, sawtooth, square
+      const [softenHighs, setSoftenHighs] = useState(true); // lowpass to avoid "metallic"
+      const [phoneBoost, setPhoneBoost] = useState(false);  // EQ + compressor for phones
+
+      const audioContextRef = useRef(null);
+      const oscillatorRef   = useRef(null);
+      const gainNodeRef     = useRef(null);
+      const analyserRef     = useRef(null);
+      const micStreamRef    = useRef(null);
+      const pitchDetectionRef = useRef(null);
+
+      /* NEW: processing nodes so we can tweak live */
+      const lowpassRef   = useRef(null);  // soften highs
+      const highshelfRef = useRef(null);  // gentle clarity bump when boost on
+      const compressorRef= useRef(null);  // loudness control for phones
+
+      const notes = {
+        'A3': 220.00, 'B3': 246.94, 'C4': 261.63, 'C#4': 277.18, 'D4': 293.66,
+        'D#4': 311.13, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00
+      };
+
+      /* Spanish Voice Training Readings */
+      const readings = [
+        {
+          id: 'gran-tirana',
+          title: 'La gran tirana',
+          description: 'Monólogo de Carlos Padrón Montoya',
+          image: '../assets/Visuals/icones/Spanish/Monologos.png',
+          content: `La Señora grande gorda asquerosa
+Que cena todos los viernes en la mesa de la esquina del Restaurante "Brisas del Mar"
+Que come langosta a la termidor con arroz congri
+Que repite "Camarero" "Camarero"
+Que es pura facha que es puro fumet que es puro fondant
+Que critica todo y a todos
+Que humilla a su marido
+Que intimida a los Camareros
+Que exige rapidez, limpieza, educación y excelente sazón
+Que le duele la cabeza, la espalda y las piernas
+Que come sin probar
+Que mira sin ver
+Que oye sin escuchar
+Que me envenena cada viernes
+Desde hace tres años
+Que me provoca odio e impotencia
+Que representa a todos los tiranos del mundo.
+Hoy viernes, me he despertado pensando en ella`
+        },
+        {
+          id: 'oh-sara',
+          title: 'Oh Sara',
+          description: 'Monólogo de Ariel Mastandrea',
+          image: '../assets/Visuals/icones/Spanish/Monologos.png',
+          content: `Oh Sara ¿Hasta cuándo? Más vale que respondas, ¿eh? Basta de historias. ¿Qué es esto de no volver más? ¿Desaparecés así, de la noche a la mañana y todo sigue igual? No, flaca, no es tan fácil. Primero, un cafecito. Después, un almuerzo. Más tarde, una vueltita de compras, una vueltita por la plaza, una salidita al cine. Al final una salidita a la cama. Y la próxima: una salidita de mi vida. ¿Te parece normal? ¿Eh? Y la calentura. Ah, no, de eso ni hablemos. Me dejaste hecho un Duke. No sé qué mierda voy a hacer. Por ahí tengo que ir a comerme un puestero en el Parque Centenario.`
+        },
+        {
+          id: 'mujer-amaba',
+          title: 'La Mujer que amaba demasiado',
+          description: 'Monólogo español',
+          image: '../assets/Visuals/icones/Spanish/Monologos.png',
+          content: `Siempre quise estar con alguien…alguien que sintiera las mismas cosas que yo. Eso suena raro pero bueno…cosas normales, como despertar juntos y tomar el desayuno en la cama. Comer pizza los domingos en la tarde viendo televisión…O hasta salir con los amigos a una reunión o a una fiesta y que el me mirara y yo a él con complicidad porque nos estábamos muriendo de ganas de salir de ahí y encerrarnos en la habitación. Cosas cursis, obvias. Cosas de parejas que están enamoradas. Pero él no quería nada de eso. Entonces yo me empecé a convencer de que tampoco lo quería; como que me puse de acuerdo conmigo misma sin estar de acuerdo. Pero en el fondo yo lo que quería era eso, tener una pareja que me hiciera sentir así, pero él no era esa persona.`
+        },
+        {
+          id: 'exercises-link',
+          title: '📋 Recursos de Ejercicios',
+          description: 'Material de práctica adicional',
+          content: 'RESOURCES',
+          isResourceList: true,
+          resources: [
+            { title: 'Vocales Femeninas y Partes de Pasaje Arcoíris', pdfUrl: 'https://drive.google.com/file/d/1WeVLuupLrVtydFnScMaDWZZ64tuvnnoI/view?usp=drive_link', status: 'coming-soon' },
+            { title: 'Pasaje Arcoíris para Voz Balanceada', pdfUrl: 'https://drive.google.com/file/d/1g7hibbDmfrv8o_W1lSdTlFYps0BT02WL/view?usp=drive_link', status: 'coming-soon' },
+            { title: 'Monólogos', pdfUrl: 'https://drive.google.com/file/d/1mhoAeFro_g4yNEsCKvr2ORgg7sAhulEB/view?usp=drive_link', status: 'coming-soon' }
+          ]
+        }
+      ];
+
+      /* Init mic + analyser */
+      const initAudio = useCallback(async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+          });
+          micStreamRef.current = stream;
+          setMicPermission('granted');
+
+          if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+          }
+
+          const source = audioContextRef.current.createMediaStreamSource(stream);
+          analyserRef.current = audioContextRef.current.createAnalyser();
+          analyserRef.current.fftSize = 2048;
+          source.connect(analyserRef.current);
+
+          setAudioInitialized(true);
+          startPitchDetection();
+        } catch (err) {
+          console.error('Microphone error:', err);
+          setMicPermission('denied');
+        }
+      }, []);
+
+      /* Pitch detection (simple dominant-bin) */
+      const startPitchDetection = useCallback(() => {
+        if (!analyserRef.current || !audioContextRef.current) return;
+
+        const bufferLength = analyserRef.current.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const detect = () => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteFrequencyData(dataArray);
+
+          let maxValue = 0, maxIndex = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            if (dataArray[i] > maxValue) { maxValue = dataArray[i]; maxIndex = i; }
+          }
+
+          if (maxValue > 50) {
+            const nyquist = audioContextRef.current.sampleRate / 2;
+            const frequency = (maxIndex * nyquist) / bufferLength;
+            if (frequency > 80 && frequency < 500) setCurrentPitch(Math.round(frequency));
+          } else {
+            setCurrentPitch(0);
+          }
+
+          pitchDetectionRef.current = requestAnimationFrame(detect);
+        };
+
+        detect();
+      }, []);
+
+      /* Start/Stop drone */
+      const startDrone = useCallback(async () => {
+        if (!audioContextRef.current) return;
+        try {
+          // iOS/Safari unlock on gesture
+          if (audioContextRef.current.state === 'suspended') {
+            await audioContextRef.current.resume();
+          }
+
+          const ctx = audioContextRef.current;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const lowpass = ctx.createBiquadFilter();
+          const shelf   = ctx.createBiquadFilter();
+          const comp    = ctx.createDynamicsCompressor();
+
+          // Timbre + note
+          osc.type = timbre;
+          osc.frequency.value = notes[selectedNote];
+
+          // Soften metallic edge with a gentle lowpass when enabled
+          lowpass.type = 'lowpass';
+          lowpass.frequency.value = softenHighs ? 2400 : 18000;
+          lowpass.Q.value = 0.7;
+
+          // Subtle clarity for small speakers when "phone boost" is on
+          shelf.type = 'highshelf';
+          shelf.frequency.value = 2500;
+          shelf.gain.value = phoneBoost ? 3 : 0;
+
+          // Dynamics to raise perceived loudness on phones
+          if (phoneBoost) {
+            comp.threshold.setValueAtTime(-26, ctx.currentTime);
+            comp.knee.setValueAtTime(9, ctx.currentTime);
+            comp.ratio.setValueAtTime(3, ctx.currentTime);
+          } else {
+            // Neutral settings (effectively bypass)
+            comp.threshold.setValueAtTime(0, ctx.currentTime);
+            comp.knee.setValueAtTime(0, ctx.currentTime);
+            comp.ratio.setValueAtTime(1, ctx.currentTime);
+          }
+          comp.attack.setValueAtTime(0.003, ctx.currentTime);
+          comp.release.setValueAtTime(0.25, ctx.currentTime);
+
+          // Volume uses base gain scaled by slider (0–200%)
+          gain.gain.value = baseGain * (volumePct / 100);
+
+          // Connect graph: osc -> lowpass -> highshelf -> compressor -> gain -> out
+          osc.connect(lowpass);
+          lowpass.connect(shelf);
+          shelf.connect(comp);
+          comp.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start();
+
+          oscillatorRef.current = osc;
+          gainNodeRef.current = gain;
+          lowpassRef.current = lowpass;
+          highshelfRef.current = shelf;
+          compressorRef.current = comp;
+
+          setIsDronePlaying(true);
+        } catch (error) {
+          console.error('Drone error:', error);
+        }
+      }, [selectedNote, timbre, softenHighs, phoneBoost, volumePct]);
+
+      const stopDrone = useCallback(() => {
+        if (oscillatorRef.current) {
+          try { oscillatorRef.current.stop(); } catch {}
+          oscillatorRef.current = null;
+        }
+        gainNodeRef.current = null;
+        lowpassRef.current = null;
+        highshelfRef.current = null;
+        compressorRef.current = null;
+        setIsDronePlaying(false);
+      }, []);
+
+      const togglePitchMonitor = useCallback(async () => {
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          try { await audioContextRef.current.resume(); } catch {}
+        }
+        setShowBubble(true);
+      }, []);
+
+      const adjustNote = useCallback((direction) => {
+        const noteArray = Object.keys(notes);
+        const currentIndex = noteArray.indexOf(selectedNote);
+        let newIndex = direction === 'up' ? currentIndex + 1 : currentIndex - 1;
+        newIndex = Math.max(0, Math.min(noteArray.length - 1, newIndex));
+        const newNote = noteArray[newIndex];
+        setSelectedNote(newNote);
+
+        if (oscillatorRef.current) {
+          oscillatorRef.current.frequency.value = notes[newNote];
+        }
+      }, [selectedNote]);
+
+      /* Keep mic + context lifecycle clean */
+      useEffect(() => {
+        initAudio();
+        // Default: enable boost on small screens
+        try {
+          if (window.matchMedia && window.matchMedia('(max-width: 480px)').matches) {
+            setPhoneBoost(true);
+          }
+        } catch {}
+        return () => {
+          if (pitchDetectionRef.current) cancelAnimationFrame(pitchDetectionRef.current);
+          if (oscillatorRef.current) { try { oscillatorRef.current.stop(); } catch {} }
+          if (micStreamRef.current) micStreamRef.current.getTracks().forEach(t => t.stop());
+          if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} }
+        };
+      }, [initAudio]);
+
+      /* Live updates while playing */
+      useEffect(() => {
+        if (gainNodeRef.current) {
+          gainNodeRef.current.gain.value = baseGain * (volumePct / 100);
+        }
+      }, [volumePct]);
+
+      useEffect(() => {
+        if (oscillatorRef.current) oscillatorRef.current.type = timbre;
+      }, [timbre]);
+
+      useEffect(() => {
+        if (lowpassRef.current) {
+          lowpassRef.current.frequency.value = softenHighs ? 2400 : 18000;
+        }
+      }, [softenHighs]);
+
+      useEffect(() => {
+        const ctx = audioContextRef.current;
+        if (ctx && compressorRef.current && highshelfRef.current) {
+          const comp = compressorRef.current;
+          const shelf = highshelfRef.current;
+          if (phoneBoost) {
+            comp.threshold.setValueAtTime(-26, ctx.currentTime);
+            comp.knee.setValueAtTime(9, ctx.currentTime);
+            comp.ratio.setValueAtTime(3, ctx.currentTime);
+            shelf.gain.value = 3;
+          } else {
+            comp.threshold.setValueAtTime(0, ctx.currentTime);
+            comp.knee.setValueAtTime(0, ctx.currentTime);
+            comp.ratio.setValueAtTime(1, ctx.currentTime);
+            shelf.gain.value = 0;
+          }
+        }
+      }, [phoneBoost]);
+
+      // Recording functions
+      const startRecording = useCallback(async () => {
+        if (!micStreamRef.current) {
+          console.error('No microphone stream available');
+          return;
+        }
+
+        try {
+          recordingChunksRef.current = [];
+          const mediaRecorder = new MediaRecorder(micStreamRef.current);
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              recordingChunksRef.current.push(event.data);
+            }
+          };
+
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(recordingChunksRef.current, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date().toLocaleString();
+            const newRecording = {
+              id: Date.now(),
+              timestamp,
+              blob,
+              url,
+              duration: null
+            };
+
+            setRecordings(prev => [...prev, newRecording]);
+            setLastRecording(newRecording);
+          };
+
+          mediaRecorderRef.current = mediaRecorder;
+          mediaRecorder.start();
+          setIsRecording(true);
+        } catch (error) {
+          console.error('Error starting recording:', error);
+        }
+      }, []);
+
+      const stopRecording = useCallback(() => {
+        if (mediaRecorderRef.current && isRecording) {
+          mediaRecorderRef.current.stop();
+          setIsRecording(false);
+        }
+      }, [isRecording]);
+
+      const deleteRecording = useCallback((id) => {
+        setRecordings(prev => {
+          const recording = prev.find(r => r.id === id);
+          if (recording) {
+            URL.revokeObjectURL(recording.url);
+          }
+          return prev.filter(r => r.id !== id);
+        });
+        if (lastRecording && lastRecording.id === id) {
+          setLastRecording(null);
+        }
+      }, [lastRecording]);
+
+      const downloadRecording = useCallback((recording) => {
+        const a = document.createElement('a');
+        a.href = recording.url;
+        a.download = `voice-recording-${recording.id}.webm`;
+        a.click();
+      }, []);
+
+      const getPitchColor = () => {
+        if (currentPitch === 0) return 'bg-gray-400';
+        const target = notes[selectedNote];
+        const diff = Math.abs(currentPitch - target);
+        if (diff < 5) return 'bg-green-500';
+        if (diff < 15) return 'bg-yellow-500';
+        return 'bg-red-500';
+      };
+
+      const getPitchStatus = () => {
+        if (currentPitch === 0) return '---';
+        const target = notes[selectedNote];
+        const diff = currentPitch - target;
+        if (Math.abs(diff) < 5) return `${currentPitch}`;
+        if (diff > 0) return `${currentPitch}↓`;
+        return `${currentPitch}↑`;
+      };
+
+      const getFontSizeClass = () => {
+        switch (fontSize) {
+          case 'small': return 'text-base';
+          case 'large': return 'text-xl';
+          case 'xlarge': return 'text-2xl';
+          default: return 'text-lg';
+        }
+      };
+
+      return (
+        <div className="min-h-screen safe-top safe-bottom" style={{backgroundColor: 'var(--brand-beige)'}}>
+          {/* Header */}
+          <header className="safe-top" style={{backgroundColor: 'var(--brand-pink)', color: 'white', boxShadow: '0 4px 20px rgba(255, 162, 254, 0.3)'}}>
+            <div className="px-6 py-4">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => window.location.href = '../'}
+                  className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = 'white';
+                    e.target.style.color = 'var(--brand-pink)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                    e.target.style.color = 'white';
+                  }}
+                >
+                  💖 ← Back to Main
+                </button>
+                <div>
+                  <h1 className="text-3xl font-bold uppercase tracking-wide text-white drop-shadow-md" style={{fontFamily: "'Averia Serif Libre', serif"}}>🇪🇸 Entrenamiento Vocal en Español</h1>
+                  <p className="text-lg font-medium text-white opacity-90" style={{fontFamily: "'Averia Serif Libre', serif"}}>Práctica vocal en español con retroalimentación en tiempo real</p>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Main */}
+          <div className="p-6 pb-20" style={{minHeight: 'calc(100vh - 100px)'}}>
+            {/* Mic permission helper */}
+            {micPermission === 'denied' && (
+              <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg">
+                <p className="text-red-800">🎤 Microphone access required for pitch detection</p>
+                <button
+                  onClick={initAudio}
+                  className="mt-2 px-4 py-2 bg-red-500 text-white rounded-lg"
+                >
+                  Grant Access
+                </button>
+              </div>
+            )}
+
+            {!selectedReading ? (
+              <>
+                {/* Drone & Monitor */}
+                <div className="bg-white training-card p-8 mb-8">
+                  <h2 className="text-2xl brand-heading mb-6" style={{color: 'var(--brand-grey)'}}>🎵 Pitch Control</h2>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {/* Note */}
+                    <div>
+                      <label className="block text-sm font-bold uppercase tracking-wide mb-3" style={{color: 'var(--brand-grey)'}}>
+                        Target Note
+                      </label>
+                      <select
+                        value={selectedNote}
+                        onChange={(e) => setSelectedNote(e.target.value)}
+                        className="w-full p-4 text-lg border-2 font-medium"
+                        style={{borderColor: 'var(--brand-pink)', borderRadius: '15px', backgroundColor: 'var(--brand-beige)'}}
+                      >
+                        {Object.entries(notes).map(([note, freq]) => (
+                          <option key={note} value={note}>
+                            {note} ({Math.round(freq)} Hz)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* NEW: Timbre */}
+                    <div>
+                      <label className="block text-sm font-bold uppercase tracking-wide mb-3" style={{color: 'var(--brand-grey)'}}>
+                        Timbre (tone color)
+                      </label>
+                      <select
+                        value={timbre}
+                        onChange={(e) => setTimbre(e.target.value)}
+                        className="w-full p-4 text-lg border-2 font-medium"
+                        style={{borderColor: 'var(--brand-pink)', borderRadius: '15px', backgroundColor: 'var(--brand-beige)'}}
+                      >
+                        <option value="sine">Sine — soft / pure</option>
+                        <option value="triangle">Triangle — warm</option>
+                        <option value="sawtooth">Saw — bright</option>
+                        <option value="square">Square — hollow</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Volume slider */}
+                  <div className="mt-4">
+                    <label className="block text-sm font-bold uppercase tracking-wide mb-3" style={{color: 'var(--brand-grey)'}}>
+                      Drone Volume: <span className="font-bold" style={{color: 'var(--brand-pink)'}}>{volumePct}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="200"
+                      step="5"
+                      value={volumePct}
+                      onChange={(e) => setVolumePct(parseInt(e.target.value, 10))}
+                      className="w-full"
+                      aria-label="Drone volume percent"
+                      style={{accentColor: 'var(--brand-pink)'}}
+                    />
+                    <p className="text-xs font-medium mt-2" style={{color: 'var(--brand-grey)', opacity: '0.7'}}>
+                      100% = original loudness. 200% = twice the original (safe).
+                    </p>
+                  </div>
+
+                  {/* NEW: Boost / Soften toggles */}
+                  <div className="mt-4 grid sm:grid-cols-2 gap-3">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={phoneBoost}
+                        onChange={(e)=>setPhoneBoost(e.target.checked)}
+                      />
+                      <span className="text-sm font-bold uppercase tracking-wide" style={{color: 'var(--brand-grey)'}}>
+                        Phone Boost (EQ + compressor)
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={softenHighs}
+                        onChange={(e)=>setSoftenHighs(e.target.checked)}
+                      />
+                      <span className="text-sm font-bold uppercase tracking-wide" style={{color: 'var(--brand-grey)'}}>
+                        Soften highs (less metallic)
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-6 mb-4">
+                    <button
+                      onClick={isDronePlaying ? stopDrone : startDrone}
+                      disabled={!audioInitialized}
+                      className={`py-4 text-lg font-bold uppercase tracking-wide transition-all duration-300 transform hover:-translate-y-1 ${
+                        !audioInitialized
+                          ? 'opacity-50 cursor-not-allowed'
+                          : ''
+                      }`}
+                      style={{
+                        borderRadius: '15px',
+                        backgroundColor: !audioInitialized
+                          ? '#e5e7eb'
+                          : isDronePlaying
+                          ? 'var(--brand-orange)'
+                          : 'var(--brand-pink)',
+                        color: !audioInitialized ? 'var(--brand-grey)' : 'white',
+                        boxShadow: !audioInitialized ? 'none' : '0 8px 20px rgba(255, 162, 254, 0.4)',
+                        border: !audioInitialized ? 'none' : '2px solid rgba(255, 255, 255, 0.3)'
+                      }}
+                    >
+                      {isDronePlaying ? '⏹ Stop Drone' : '▶ Start Drone'}
+                    </button>
+
+                    <button
+                      onClick={togglePitchMonitor}
+                      disabled={!audioInitialized}
+                      className={`py-4 text-lg font-bold uppercase tracking-wide transition-all duration-300 transform hover:-translate-y-1 ${
+                        !audioInitialized
+                          ? 'opacity-50 cursor-not-allowed'
+                          : ''
+                      }`}
+                      style={{
+                        borderRadius: '15px',
+                        backgroundColor: !audioInitialized
+                          ? '#e5e7eb'
+                          : showBubble
+                          ? '#22c55e'
+                          : 'var(--brand-purple)',
+                        color: !audioInitialized ? 'var(--brand-grey)' : 'white',
+                        boxShadow: !audioInitialized ? 'none' : showBubble ? '0 8px 20px rgba(34, 197, 94, 0.4)' : '0 8px 20px rgba(144, 77, 255, 0.4)',
+                        border: !audioInitialized ? 'none' : '2px solid rgba(255, 255, 255, 0.3)'
+                      }}
+                    >
+                      {showBubble ? '✓ Monitor On' : '👁 Show Monitor'}
+                    </button>
+                  </div>
+
+                  {audioInitialized && (
+                    <div className="text-center p-6 rounded-2xl" style={{backgroundColor: 'white', border: '3px solid var(--brand-pink)', boxShadow: '0 8px 25px rgba(255, 162, 254, 0.2)'}}>
+                      <div className="text-sm font-bold uppercase tracking-wide mb-2" style={{color: 'var(--brand-grey)'}}>Current Pitch</div>
+                      <div className={`text-3xl font-bold mb-2`} style={{
+                        color: currentPitch === 0
+                          ? '#9ca3af'
+                          : Math.abs(currentPitch - notes[selectedNote]) < 5
+                          ? '#22c55e'
+                          : Math.abs(currentPitch - notes[selectedNote]) < 15
+                          ? '#f97316'
+                          : '#ef4444'
+                      }}>
+                        {currentPitch > 0 ? `${currentPitch} Hz` : 'No signal'}
+                      </div>
+                      <div className="text-sm font-medium" style={{color: 'var(--brand-grey)', opacity: '0.8'}}>
+                        Target: {Math.round(notes[selectedNote])} Hz
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Reading selection */}
+                <div className="bg-white training-card p-8">
+                  <h2 className="text-2xl brand-heading mb-6" style={{color: 'var(--brand-grey)'}}>📚 Select Reading Material</h2>
+                  <div className="space-y-3">
+                    {readings.map((reading) => (
+                      <button
+                        key={reading.id}
+                        onClick={() => setSelectedReading(reading)}
+                        className="w-full text-left p-6 border-2 transition-all duration-300 transform hover:-translate-y-1"
+                        style={{
+                          borderColor: 'var(--brand-pink)',
+                          borderRadius: '15px',
+                          backgroundColor: 'var(--brand-beige)'
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.backgroundColor = 'white';
+                          e.target.style.boxShadow = '0 8px 25px rgba(255, 162, 254, 0.2)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.backgroundColor = 'var(--brand-beige)';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                      >
+                        <div className="font-bold text-lg mb-2" style={{color: 'var(--brand-grey)'}}>{reading.title}</div>
+                        <div className="text-sm font-medium" style={{color: 'var(--brand-grey)', opacity: '0.8'}}>{reading.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Reading view */
+              <div className="bg-white training-card p-8">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <button
+                      onClick={() => setSelectedReading(null)}
+                      className="font-bold uppercase tracking-wide text-sm mb-4 transition-colors"
+                      style={{color: 'var(--brand-pink)'}}
+                      onMouseOver={(e) => e.target.style.color = 'var(--brand-purple)'}
+                      onMouseOut={(e) => e.target.style.color = 'var(--brand-pink)'}
+                    >
+                      ← Back to Materials
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        const sizes = ['small', 'medium', 'large', 'xlarge'];
+                        const current = sizes.indexOf(fontSize);
+                        setFontSize(sizes[(current + 1) % sizes.length]);
+                      }}
+                      className="px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all duration-300 transform hover:-translate-y-1"
+                      style={{
+                        borderRadius: '10px',
+                        background: 'linear-gradient(135deg, var(--brand-yellow), var(--brand-orange))',
+                        color: 'white',
+                        boxShadow: '0 4px 15px rgba(253, 213, 90, 0.3)'
+                      }}
+                    >
+                      Aa Size
+                    </button>
+                  </div>
+                </div>
+
+                {/* Image if present */}
+                {selectedReading.image && (
+                  <div className="text-center mb-6">
+                    <img
+                      src={selectedReading.image}
+                      alt={selectedReading.title}
+                      style={{
+                        maxWidth: '300px',
+                        width: '100%',
+                        height: 'auto',
+                        margin: '0 auto',
+                        display: 'block'
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Title and description centered */}
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl brand-heading mb-2">{selectedReading.title}</h2>
+                  <p className="text-lg font-medium" style={{color: 'var(--brand-grey)', opacity: '0.8'}}>{selectedReading.description}</p>
+                </div>
+
+                {selectedReading.isResourceList ? (
+                  <div className="space-y-4">
+                    {selectedReading.resources.map((resource, index) => (
+                      <div
+                        key={index}
+                        className="p-5 border-2 transition-all duration-300"
+                        style={{
+                          borderColor: 'var(--brand-pink)',
+                          borderRadius: '15px',
+                          backgroundColor: 'var(--brand-beige)',
+                          boxShadow: '0 2px 10px rgba(255, 162, 254, 0.1)'
+                        }}
+                      >
+                        <div className="mb-3">
+                          <div className="font-bold text-lg" style={{color: 'var(--brand-grey)'}}>{resource.title}</div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* PDF Button */}
+                          <a
+                            href={resource.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
+                            style={{
+                              backgroundColor: 'var(--brand-purple)',
+                              color: 'white',
+                              textDecoration: 'none',
+                              boxShadow: '0 4px 15px rgba(144, 77, 255, 0.3)'
+                            }}
+                          >
+                            📄 PDF Printable
+                          </a>
+
+                          {/* Digital View Button */}
+                          {resource.status === 'available' ? (
+                            <a
+                              href={resource.digitalPage}
+                              className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
+                              style={{
+                                backgroundColor: 'var(--brand-pink)',
+                                color: 'var(--brand-grey)',
+                                textDecoration: 'none',
+                                boxShadow: '0 4px 15px rgba(255, 162, 254, 0.3)'
+                              }}
+                            >
+                              📱 View in App
+                            </a>
+                          ) : (
+                            <div
+                              className="text-center py-3 px-4 rounded-lg font-bold text-sm cursor-not-allowed"
+                              style={{
+                                backgroundColor: '#e5e7eb',
+                                color: '#9ca3af'
+                              }}
+                            >
+                              📱 Coming Soon
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`reading-text ${getFontSizeClass()} whitespace-pre-wrap`} style={{color: 'var(--brand-grey)'}}>
+                    {selectedReading.content}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Floating pitch bubble */}
+          {showBubble && (
+            <div className="floating-bubble">
+              {!bubbleExpanded ? (
+                <button
+                  onClick={() => setBubbleExpanded(true)}
+                  className={`w-20 h-16 rounded-full shadow-lg flex items-center justify-center text-white font-bold text-sm pitch-indicator ${getPitchColor()}`}
+                >
+                  {getPitchStatus()}
+                </button>
+              ) : (
+                <div className="bg-white rounded-2xl shadow-xl p-4 w-48">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="font-semibold text-sm">Pitch Monitor</span>
+                    <button
+                      onClick={() => setBubbleExpanded(false)}
+                      className="text-gray-500 text-xl"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="text-center mb-3">
+                    <div className={`text-2xl font-bold ${
+                      currentPitch === 0
+                        ? 'text-gray-400'
+                        : Math.abs(currentPitch - notes[selectedNote]) < 5
+                        ? 'text-green-500'
+                        : Math.abs(currentPitch - notes[selectedNote]) < 15
+                        ? 'text-yellow-500'
+                        : 'text-red-500'
+                    }`}>
+                      {currentPitch > 0 ? `${currentPitch} Hz` : '---'}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Target: {selectedNote} ({Math.round(notes[selectedNote])} Hz)
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => adjustNote('down')}
+                      className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      onClick={() => adjustNote('up')}
+                      className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm"
+                    >
+                      ↑
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={isDronePlaying ? stopDrone : startDrone}
+                      className={`flex-1 py-2 rounded-lg text-sm text-white ${
+                        isDronePlaying ? 'bg-red-500' : 'bg-green-500'
+                      }`}
+                    >
+                      {isDronePlaying ? 'Mute Drone' : 'Play Drone'}
+                    </button>
+                  </div>
+
+                  {/* Recording controls */}
+                  <div className="space-y-2">
+                    <button
+                      onClick={isRecording ? stopRecording : startRecording}
+                      disabled={!audioInitialized}
+                      className={`w-full py-2 rounded-lg text-sm text-white font-semibold flex items-center justify-center gap-2 ${
+                        !audioInitialized ? 'bg-gray-300 cursor-not-allowed' :
+                        isRecording ? 'bg-red-600' : 'bg-purple-600'
+                      }`}
+                      title={!audioInitialized ? 'Activate microphone first' : ''}
+                    >
+                      {isRecording && <span className="inline-block w-3 h-3 bg-white rounded-full animate-pulse"></span>}
+                      {isRecording ? 'Stop Recording' : 'Record'}
+                    </button>
+
+                    {lastRecording && (
+                      <button
+                        onClick={() => {
+                          const audio = new Audio(lastRecording.url);
+                          audio.play();
+                        }}
+                        className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-pink-500"
+                      >
+                        Replay Last
+                      </button>
+                    )}
+
+                    {recordings.length > 0 && (
+                      <button
+                        onClick={() => setShowRecordingsModal(true)}
+                        className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-orange-500"
+                      >
+                        Recordings ({recordings.length})
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recordings Modal */}
+          {showRecordingsModal && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowRecordingsModal(false)}
+            >
+              <div
+                className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between" style={{backgroundColor: 'var(--brand-purple)'}}>
+                  <h2 className="text-xl font-bold text-white">Your Recordings</h2>
+                  <button
+                    onClick={() => setShowRecordingsModal(false)}
+                    className="text-white text-2xl hover:bg-white hover:bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Warning Message */}
+                <div className="p-4 bg-yellow-50 border-b border-yellow-200">
+                  <p className="text-sm text-yellow-800">
+                    Note: Recordings are stored temporarily in your browser. They will be lost when you close this tab or refresh the page.
+                  </p>
+                </div>
+
+                {/* Recordings List */}
+                <div className="p-4 overflow-y-auto max-h-[calc(80vh-200px)]">
+                  {recordings.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <div className="text-4xl mb-2"></div>
+                      <p>No recordings yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recordings.slice().reverse().map((recording, index) => (
+                        <div
+                          key={recording.id}
+                          className="border-2 rounded-lg p-4 hover:shadow-md transition-shadow"
+                          style={{borderColor: 'var(--brand-pink)'}}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <div className="font-semibold" style={{color: 'var(--brand-grey)'}}>
+                                Recording #{recordings.length - index}
+                              </div>
+                              <div className="text-xs text-gray-500">{recording.timestamp}</div>
+                            </div>
+                          </div>
+
+                          {/* Audio Player */}
+                          <audio
+                            controls
+                            src={recording.url}
+                            className="w-full mb-3"
+                            style={{height: '40px'}}
+                          />
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => downloadRecording(recording)}
+                              className="flex-1 py-2 px-3 rounded-lg text-sm font-semibold text-white"
+                              style={{backgroundColor: 'var(--brand-purple)'}}
+                            >
+                              Download
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm('Delete this recording?')) {
+                                  deleteRecording(recording.id);
+                                }
+                              }}
+                              className="py-2 px-3 rounded-lg text-sm font-semibold text-white bg-red-500"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 border-t border-gray-200 bg-gray-50">
+                  <button
+                    onClick={() => setShowRecordingsModal(false)}
+                    className="w-full py-2 rounded-lg text-sm font-semibold text-white"
+                    style={{backgroundColor: 'var(--brand-grey)'}}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<VoiceTrainingReader />);
+  </script>
+</body>
+</html>

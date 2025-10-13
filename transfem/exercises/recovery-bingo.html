@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recovery Bingo — Voice Training Companion</title>
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--brand-beige);
+      color: var(--brand-grey);
+      line-height: 1.6;
+      letter-spacing: 0.02em;
+    }
+
+    .header {
+      background: var(--brand-pink);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(255, 162, 254, 0.3);
+    }
+
+    .header-content {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-button {
+      padding: 10px 20px;
+      background: white;
+      color: var(--brand-pink);
+      border: 2px solid white;
+      border-radius: 25px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .back-button:hover {
+      background: var(--brand-purple);
+      color: white;
+      border-color: var(--brand-purple);
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 20px 72px;
+    }
+
+    .header-image {
+      text-align: center;
+      margin: 32px auto 24px;
+      max-width: 1100px;
+      padding: 0 20px;
+    }
+
+    .header-image img {
+      max-width: 220px;
+      width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    h1 {
+      font-family: 'Averia Serif Libre', serif;
+      font-weight: 700;
+      text-align: center;
+      font-size: clamp(32px, 6vw, 48px);
+      margin: 0 0 16px;
+      color: var(--brand-purple);
+      text-transform: uppercase;
+    }
+
+    .intro-box {
+      background: white;
+      border-radius: 20px;
+      padding: 28px 32px;
+      border: 3px solid var(--brand-pink);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      margin-bottom: 32px;
+    }
+
+    .intro-box p {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--brand-grey);
+      line-height: 1.8;
+      margin-bottom: 12px;
+    }
+
+    .intro-box p:last-child {
+      margin-bottom: 0;
+    }
+
+    .intro-box strong {
+      color: var(--brand-purple);
+      font-weight: 700;
+    }
+
+    .intro-box .em {
+      color: var(--brand-pink);
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .reset-button {
+      padding: 12px 28px;
+      background: var(--brand-purple);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(144, 77, 255, 0.3);
+    }
+
+    .reset-button:hover {
+      background: var(--brand-pink);
+      color: var(--brand-grey);
+      transform: translateY(-2px);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 26px;
+      margin-top: 28px;
+    }
+
+    .tile {
+      position: relative;
+      min-height: 190px;
+      border-radius: 42px;
+      border: 4px solid var(--brand-grey);
+      background: #fefcff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 28px 22px;
+      font-family: 'Averia Serif Libre', serif;
+      font-size: 36px;
+      line-height: 1.05;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      user-select: none;
+      z-index: 1;
+    }
+
+    /* Gradient shadow behind each card */
+    .tile::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 42px;
+      background: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-purple) 100%);
+      transform: translate(14px, 14px);
+      z-index: -1;
+      filter: saturate(110%);
+      transition: all 0.3s ease;
+    }
+
+    .tile:hover {
+      transform: translateY(-4px);
+    }
+
+    .tile:hover::before {
+      transform: translate(18px, 18px);
+    }
+
+    /* Checked state */
+    .tile.checked {
+      background: linear-gradient(135deg, var(--brand-pink) 0%, var(--brand-purple) 100%);
+      color: white;
+      border-color: var(--brand-purple);
+    }
+
+    .tile.checked::before {
+      background: linear-gradient(135deg, var(--brand-yellow) 0%, var(--brand-orange) 100%);
+    }
+
+    /* Checkmark */
+    .tile .checkmark {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      opacity: 0;
+      transform: scale(0) rotate(-180deg);
+      transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    .tile.checked .checkmark {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
+
+    /* Small subtitle tiles */
+    .tile--sm { font-size: 28px; }
+    .tile--xs { font-size: 22px; }
+
+    /* Responsive */
+    @media (max-width: 1000px) {
+      .grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 720px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+
+      .tile {
+        min-height: 170px;
+        font-size: 30px;
+        padding: 22px 18px;
+      }
+
+      .tile--sm { font-size: 24px; }
+      .tile--xs { font-size: 20px; }
+
+      .intro-box {
+        padding: 20px 24px;
+      }
+
+      .intro-box p {
+        font-size: 16px;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+
+      .tile {
+        min-height: 150px;
+        font-size: 32px;
+      }
+
+      .tile::before {
+        transform: translate(10px, 10px);
+      }
+
+      .tile:hover::before {
+        transform: translate(12px, 12px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <a href="javascript:history.back()" class="back-button">← Back to Exercises</a>
+      <div>
+        <h1 style="margin: 0; font-size: 24px; text-align: left; color: white;">Recovery Bingo</h1>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Image -->
+  <div class="header-image">
+    <img src="../../assets/Visuals/icones/Transfemme/Recovery Bingo.png" alt="Recovery Bingo">
+  </div>
+
+  <main class="wrap">
+    <h1>Recovery Bingo</h1>
+
+    <div class="intro-box">
+      <p>There's no one right way to play — try any of these approaches:</p>
+      <p><strong>Go for a coverall:</strong> Try every technique on the board.</p>
+      <p><strong>Follow your instincts:</strong> Choose a line that resonates with you and aim for a <span class="em">BING(O)</span> — across, down, or diagonally.</p>
+      <p><strong>Mix it up:</strong> Choose tools at random and see what helps most in the moment.</p>
+    </div>
+
+    <div class="controls">
+      <button class="reset-button" onclick="resetBoard()">🔄 Reset Board</button>
+    </div>
+
+    <section class="grid" id="bingo-grid">
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Low<br>Inhale</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Anchor<br>word</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Move</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Raise<br>Pitch</div>
+        <span class="checkmark">✓</span>
+      </div>
+
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Release<br>The<br>breath</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile tile--sm" onclick="toggleTile(this)">
+        <div>Resonance</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile tile--xs" onclick="toggleTile(this)">
+        <div>Vowel<br>elongation</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Relax the tongue</div>
+        <span class="checkmark">✓</span>
+      </div>
+
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Slow Down</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Relax the Jaw</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Lower pitch</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile tile--sm" onclick="toggleTile(this)">
+        <div>Two words monotone</div>
+        <span class="checkmark">✓</span>
+      </div>
+
+      <div class="tile tile--sm" onclick="toggleTile(this)">
+        <div>Consonants</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Bouncy voice</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Align the spine</div>
+        <span class="checkmark">✓</span>
+      </div>
+      <div class="tile" onclick="toggleTile(this)">
+        <div>Relax the larynx</div>
+        <span class="checkmark">✓</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Toggle tile checked state
+    function toggleTile(tile) {
+      tile.classList.toggle('checked');
+
+      // Save state to localStorage
+      saveState();
+
+      // Add bounce animation
+      tile.style.animation = 'none';
+      setTimeout(() => {
+        tile.style.animation = '';
+      }, 10);
+    }
+
+    // Reset all tiles
+    function resetBoard() {
+      const tiles = document.querySelectorAll('.tile');
+      tiles.forEach(tile => {
+        tile.classList.remove('checked');
+      });
+
+      // Clear localStorage
+      localStorage.removeItem('recoveryBingoState');
+    }
+
+    // Save state to localStorage
+    function saveState() {
+      const tiles = document.querySelectorAll('.tile');
+      const state = Array.from(tiles).map(tile => tile.classList.contains('checked'));
+      localStorage.setItem('recoveryBingoState', JSON.stringify(state));
+    }
+
+    // Load state from localStorage
+    function loadState() {
+      const saved = localStorage.getItem('recoveryBingoState');
+      if (saved) {
+        const state = JSON.parse(saved);
+        const tiles = document.querySelectorAll('.tile');
+        state.forEach((isChecked, index) => {
+          if (isChecked && tiles[index]) {
+            tiles[index].classList.add('checked');
+          }
+        });
+      }
+    }
+
+    // Load state on page load
+    window.addEventListener('DOMContentLoaded', loadState);
+  </script>
+</body>
+</html>

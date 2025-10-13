@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=no" />
+  <title>App and Website Recommendations - Voice Training Companion</title>
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--brand-beige);
+      color: var(--brand-grey);
+      line-height: 1.8;
+    }
+
+    .header {
+      background: var(--brand-purple);
+      color: var(--brand-beige);
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-family: 'Averia Serif Libre', serif;
+      font-size: clamp(32px, 6vw, 48px);
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .header p {
+      font-size: 18px;
+      opacity: 0.9;
+    }
+
+    .back-button {
+      display: inline-block;
+      margin: 20px;
+      padding: 12px 24px;
+      background: var(--brand-pink);
+      color: var(--brand-grey);
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      transition: transform 0.2s ease;
+    }
+
+    .back-button:hover {
+      transform: translateY(-2px);
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+    }
+
+    .icon-container {
+      text-align: center;
+      margin: 40px 0;
+    }
+
+    .icon-container img {
+      max-width: 200px;
+      width: 100%;
+      height: auto;
+    }
+
+    .intro {
+      background: var(--brand-white);
+      padding: 30px;
+      border-radius: 20px;
+      border: 3px solid var(--brand-purple);
+      margin-bottom: 40px;
+      font-size: 18px;
+      line-height: 1.8;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      font-weight: 600;
+    }
+
+    .section {
+      background: var(--brand-white);
+      padding: 40px;
+      border-radius: 20px;
+      border: 3px solid var(--brand-purple);
+      margin-bottom: 30px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    .section h2 {
+      font-family: 'Averia Serif Libre', serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--brand-purple);
+      margin-bottom: 25px;
+      text-transform: uppercase;
+    }
+
+    .section h3 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--brand-grey);
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
+    .section ul {
+      list-style: none;
+      padding: 0;
+      margin-left: 0;
+    }
+
+    .section li {
+      margin-bottom: 15px;
+      padding-left: 30px;
+      position: relative;
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .section li:before {
+      content: "○";
+      position: absolute;
+      left: 0;
+      color: var(--brand-purple);
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .section > ul > li:before {
+      content: "●";
+    }
+
+    .nested-list {
+      margin-left: 30px;
+      margin-top: 10px;
+    }
+
+    .nested-list li:before {
+      content: "■";
+      font-size: 16px;
+    }
+
+    a {
+      color: var(--brand-purple);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s ease;
+    }
+
+    a:hover {
+      color: var(--brand-pink);
+      text-decoration: underline;
+    }
+
+    strong {
+      font-weight: 700;
+      color: var(--brand-grey);
+    }
+
+    p {
+      margin-bottom: 15px;
+      line-height: 1.8;
+    }
+
+    @media (max-width: 768px) {
+      .section {
+        padding: 25px;
+      }
+
+      .section h2 {
+        font-size: 28px;
+      }
+
+      .section h3 {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📱 App & Website Recommendations</h1>
+    <p>Helpful resources for voice training</p>
+  </div>
+
+  <a href="./" class="back-button">← Back to Resources</a>
+
+  <div class="container">
+    <div class="icon-container">
+      <img src="../assets/Visuals/icones/Admin/App and Website Recommendations.png" alt="App and Website Recommendations">
+    </div>
+
+    <div class="intro">
+      Find varying app and website resources below!
+    </div>
+
+    <div class="section">
+      <h2>Pitch Tools</h2>
+
+      <h3>Voice Tools (app):</h3>
+      <ul class="nested-list">
+        <li>Available on <a href="https://apps.apple.com/us/app/voice-tools/id1447495900" target="_blank" rel="noopener noreferrer">Apple App Store</a> and <a href="https://play.google.com/store/apps/details?id=com.DevExtras.VoiceTools&hl=en_US&pli=1" target="_blank" rel="noopener noreferrer">Google Play Store</a></li>
+        <li>Disable the "Show Gender Markers" option in Settings. The "Pitch" tab shows a flowing chart of fundamental frequency. The "Tone" tab reads real-time fundamental frequency and has tones to select from for the student to play a starting pitch. There is also a spectrogram in the "More" tab.</li>
+        <li>Note, there is a voice pitch analyzer in the "Analyse" tab. Generally, we discourage use of voice pitch analyzers. Talk to your instructor about this if you have further questions.</li>
+      </ul>
+
+      <h3><a href="https://spectrogram.sciencemusic.org/" target="_blank" rel="noopener noreferrer">Spectrogram</a> from Listening to Waves (website)</h3>
+      <ul class="nested-list">
+        <li>Free to use, click the microphone icon to get started. Works best on desktop, not so much on mobile devices.</li>
+      </ul>
+
+      <h3>Piano Apps:</h3>
+      <ul class="nested-list">
+        <li>Virtuoso: Available on <a href="https://apps.apple.com/us/app/virtuoso-piano-free-3/id391994966" target="_blank" rel="noopener noreferrer">Apple App Store</a></li>
+        <li>Piano for iPhone: Available on <a href="https://apps.apple.com/us/app/piano-for-iphone/id531263194" target="_blank" rel="noopener noreferrer">Apple App Store</a></li>
+      </ul>
+
+      <h3>Drones:</h3>
+      <ul class="nested-list">
+        <li><a href="https://www.youtube.com/watch?v=9uTvD-ViYvo" target="_blank" rel="noopener noreferrer">247Hz (B3) Drone</a></li>
+        <li><a href="https://www.youtube.com/watch?v=0XvVS-aoNmc" target="_blank" rel="noopener noreferrer">220 Hz (A3) Drone</a></li>
+        <li><a href="https://www.youtube.com/watch?v=0_iqlSl0o4o" target="_blank" rel="noopener noreferrer">Cello B Drone</a></li>
+        <li><a href="https://www.youtube.com/watch?v=qpQ6c0NotCY" target="_blank" rel="noopener noreferrer">Cello A Drone</a></li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Recording Tools</h2>
+      <ul>
+        <li><a href="http://vocaroo.com/" target="_blank" rel="noopener noreferrer">Vocaroo.com</a> (website): Great for recording, and sharing recordings. You can download their recordings or save/share via link. Works in-browser on desktop and mobile.</li>
+        <li>On Apple mobile devices, <a href="https://apps.apple.com/us/app/voice-memos/id1069512134" target="_blank" rel="noopener noreferrer">Voice Memos</a></li>
+        <li>On Android mobile devices, <a href="https://play.google.com/store/apps/details?id=com.media.bestrecorder.audiorecorder&pcampaignid=web_share" target="_blank" rel="noopener noreferrer">Voice Recorder</a></li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Reading Resources</h2>
+
+      <h3>Random sentence resources:</h3>
+      <ul class="nested-list">
+        <li><a href="http://practice.herostrat.us/" target="_blank" rel="noopener noreferrer">http://practice.herostrat.us/</a> - Three Harvard sentences at a time. Created by a trans person doing voice training, for trans people doing voice training!</li>
+        <li><a href="https://perchance.org/sentence" target="_blank" rel="noopener noreferrer">https://perchance.org/sentence</a> - Select the number of sentences you want at a time.</li>
+      </ul>
+
+      <h3>Longer reading resources:</h3>
+      <ul class="nested-list">
+        <li><a href="https://www.rockpapershotgun.com/reviews" target="_blank" rel="noopener noreferrer">Rock Paper Shotgun:</a> Fun, creatively written video game reviews.</li>
+        <li><a href="https://en.wikipedia.org/wiki/Special:Random" target="_blank" rel="noopener noreferrer">Random Wikipedia Pages:</a> Re-click, copy and paste "<a href="https://en.wikipedia.org/wiki/Special:Random" target="_blank" rel="noopener noreferrer">https://en.wikipedia.org/wiki/Special:Random</a>" in the search bar, or select "Random article" from the main menu on Wikipedia for seemingly endless articles!</li>
+      </ul>
+
+      <ul>
+        <li><a href="https://www.karstennoack.com/tongue-twister-voice-training/" target="_blank" rel="noopener noreferrer">Tongue twisters</a>: Organized here by starting letter.</li>
+        <li><a href="https://www.home-speech-home.com/speech-therapy-word-lists.html" target="_blank" rel="noopener noreferrer">Words and sentences by letter and structure</a>: Good for targeting specific letters, and ramping up new reading material.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Other</h2>
+      <ul>
+        <li><a href="https://perchance.org/emotion" target="_blank" rel="noopener noreferrer">Random emotion generator:</a> Great for work during embodiment/modification, reading or improvising with different emotions. Can generate one or multiple emotions at a time.</li>
+      </ul>
+
+      <h3>Images to have students describe:</h3>
+      <ul class="nested-list">
+        <li><a href="https://imgur.com/gallery/lets-play-some-wheres-waldo-8exqx" target="_blank" rel="noopener noreferrer">Where's Waldo</a></li>
+        <li><a href="https://imgur.com/gallery/i-spy-bOQd8" target="_blank" rel="noopener noreferrer">I Spy</a></li>
+        <li><a href="https://randomimagegen.com/" target="_blank" rel="noopener noreferrer">Random image generator</a></li>
+        <li>Photo hunt games:
+          <ul class="nested-list">
+            <li><a href="https://www.spotthedifference.com/practice.asp?m=5&l=1" target="_blank" rel="noopener noreferrer">Option 1 - Photos</a></li>
+            <li><a href="https://www.spot-differences.com/" target="_blank" rel="noopener noreferrer">Option 2 - Pictures</a></li>
+          </ul>
+        </li>
+      </ul>
+
+      <ul>
+        <li><a href="http://chatgpt.com/" target="_blank" rel="noopener noreferrer">ChatGPT</a> - ask for lists of questions for specific hobbies, job positions, etc.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

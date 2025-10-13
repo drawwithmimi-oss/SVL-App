@@ -1,0 +1,43 @@
+{
+  "name": "voice-training-companion",
+  "version": "1.0.0",
+  "description": "A comprehensive voice training web application combining real-time pitch detection with curated reading material. Features drone tones, pitch monitoring, and specialized texts for voice exercises.",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "npx serve .",
+    "dev": "python -m http.server 8000"
+  },
+  "keywords": [
+    "voice-training",
+    "pitch-detection",
+    "speech-therapy",
+    "vocal-exercises",
+    "web-audio-api",
+    "react",
+    "reading-practice",
+    "voice-coach",
+    "pitch-matching",
+    "drone-tones"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/voice-training-companion.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/voice-training-companion/issues"
+  },
+  "homepage": "https://github.com/username/voice-training-companion#readme",
+  "browserslist": [
+    "Chrome >= 60",
+    "Edge >= 79",
+    "Safari >= 14",
+    "Firefox >= 60"
+  ]
+}
