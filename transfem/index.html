@@ -271,15 +271,25 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
       /* Init mic + analyser */
       const initAudio = useCallback(async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-          });
-          micStreamRef.current = stream;
-          setMicPermission('granted');
-
+          // Create AudioContext first (iOS requires this before getUserMedia)
           if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
           }
+
+          // iOS/Safari: AudioContext starts suspended, must resume with user gesture
+          if (audioContextRef.current.state === 'suspended') {
+            await audioContextRef.current.resume();
+          }
+
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          });
+          micStreamRef.current = stream;
+          setMicPermission('granted');
 
           const source = audioContextRef.current.createMediaStreamSource(stream);
           analyserRef.current = audioContextRef.current.createAnalyser();
@@ -290,7 +300,14 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           startPitchDetection();
         } catch (err) {
           console.error('Microphone error:', err);
-          setMicPermission('denied');
+          if (err.name === 'NotAllowedError') {
+            setMicPermission('denied');
+          } else if (err.name === 'NotFoundError') {
+            console.error('No microphone found');
+            setMicPermission('denied');
+          } else {
+            setMicPermission('denied');
+          }
         }
       }, []);
 
@@ -408,8 +425,12 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         if (!audioInitialized) {
           await initAudio();
         }
+        // Ensure AudioContext is running (iOS requirement)
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
         setMicActive(true);
-      }, [audioInitialized]);
+      }, [audioInitialized, initAudio]);
 
       const togglePitchMonitor = useCallback(async () => {
         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
@@ -439,8 +460,29 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
 
         try {
+          // Ensure AudioContext is running before recording (iOS requirement)
+          if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+            await audioContextRef.current.resume();
+          }
+
           recordingChunksRef.current = [];
-          const mediaRecorder = new MediaRecorder(micStreamRef.current);
+
+          // iOS Safari fix: isTypeSupported() returns false for everything on iOS
+          // even though MediaRecorder works! Detect iOS/Safari directly.
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+          let options;
+          if (isIOS || (isSafari && !MediaRecorder.isTypeSupported('audio/webm'))) {
+            // iOS/Safari: Use empty options to let browser choose (will use mp4/aac)
+            options = {};
+          } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+            options = { mimeType: 'audio/webm' };
+          } else {
+            options = {}; // Browser default
+          }
+
+          const mediaRecorder = new MediaRecorder(micStreamRef.current, options);
 
           mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
@@ -449,7 +491,8 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           };
 
           mediaRecorder.onstop = () => {
-            const blob = new Blob(recordingChunksRef.current, { type: 'audio/webm' });
+            const mimeType = mediaRecorder.mimeType || 'audio/webm';
+            const blob = new Blob(recordingChunksRef.current, { type: mimeType });
             const url = URL.createObjectURL(blob);
             const timestamp = new Date().toLocaleString();
             const newRecording = {
@@ -457,7 +500,8 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
               timestamp,
               blob,
               url,
-              duration: null // Could calculate if needed
+              duration: null, // Could calculate if needed
+              mimeType
             };
 
             setRecordings(prev => [...prev, newRecording]);
@@ -469,6 +513,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           setIsRecording(true);
         } catch (error) {
           console.error('Error starting recording:', error);
+          alert('Recording failed. Please ensure microphone access is granted and try again.');
         }
       }, []);
 
@@ -495,7 +540,14 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
       const downloadRecording = useCallback((recording) => {
         const a = document.createElement('a');
         a.href = recording.url;
-        a.download = `voice-recording-${recording.id}.webm`;
+        // Determine file extension based on mimeType
+        let ext = 'webm';
+        if (recording.mimeType) {
+          if (recording.mimeType.includes('mp4')) ext = 'mp4';
+          else if (recording.mimeType.includes('aac')) ext = 'aac';
+          else if (recording.mimeType.includes('m4a')) ext = 'm4a';
+        }
+        a.download = `voice-recording-${recording.id}.${ext}`;
         a.click();
       }, []);
 

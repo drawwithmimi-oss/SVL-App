@@ -106,6 +106,7 @@
       const [currentPitch, setCurrentPitch] = useState(0);
       const [micPermission, setMicPermission] = useState('pending');
       const [audioInitialized, setAudioInitialized] = useState(false);
+      const [micActive, setMicActive] = useState(false);
       const [showBubble, setShowBubble] = useState(false);
       const [bubbleExpanded, setBubbleExpanded] = useState(false);
       const [selectedReading, setSelectedReading] = useState(null);
@@ -244,15 +245,25 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
       /* Init mic + analyser */
       const initAudio = useCallback(async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-          });
-          micStreamRef.current = stream;
-          setMicPermission('granted');
-
+          // Create AudioContext first (iOS requires this before getUserMedia)
           if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
           }
+
+          // iOS/Safari: AudioContext starts suspended, must resume with user gesture
+          if (audioContextRef.current.state === 'suspended') {
+            await audioContextRef.current.resume();
+          }
+
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          });
+          micStreamRef.current = stream;
+          setMicPermission('granted');
 
           const source = audioContextRef.current.createMediaStreamSource(stream);
           analyserRef.current = audioContextRef.current.createAnalyser();
@@ -263,7 +274,14 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
           startPitchDetection();
         } catch (err) {
           console.error('Microphone error:', err);
-          setMicPermission('denied');
+          if (err.name === 'NotAllowedError') {
+            setMicPermission('denied');
+          } else if (err.name === 'NotFoundError') {
+            console.error('No microphone found');
+            setMicPermission('denied');
+          } else {
+            setMicPermission('denied');
+          }
         }
       }, []);
 
@@ -377,6 +395,17 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
         setIsDronePlaying(false);
       }, []);
 
+      const activateMicrophone = useCallback(async () => {
+        if (!audioInitialized) {
+          await initAudio();
+        }
+        // Ensure AudioContext is running (iOS requirement)
+        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+        setMicActive(true);
+      }, [audioInitialized, initAudio]);
+
       const togglePitchMonitor = useCallback(async () => {
         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
           try { await audioContextRef.current.resume(); } catch {}
@@ -458,8 +487,29 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
         }
 
         try {
+          // Ensure AudioContext is running before recording (iOS requirement)
+          if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+            await audioContextRef.current.resume();
+          }
+
           recordingChunksRef.current = [];
-          const mediaRecorder = new MediaRecorder(micStreamRef.current);
+
+          // iOS Safari fix: isTypeSupported() returns false for everything on iOS
+          // even though MediaRecorder works! Detect iOS/Safari directly.
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+          let options;
+          if (isIOS || (isSafari && !MediaRecorder.isTypeSupported('audio/webm'))) {
+            // iOS/Safari: Use empty options to let browser choose (will use mp4/aac)
+            options = {};
+          } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+            options = { mimeType: 'audio/webm' };
+          } else {
+            options = {}; // Browser default
+          }
+
+          const mediaRecorder = new MediaRecorder(micStreamRef.current, options);
 
           mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
@@ -468,7 +518,8 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
           };
 
           mediaRecorder.onstop = () => {
-            const blob = new Blob(recordingChunksRef.current, { type: 'audio/webm' });
+            const mimeType = mediaRecorder.mimeType || 'audio/webm';
+            const blob = new Blob(recordingChunksRef.current, { type: mimeType });
             const url = URL.createObjectURL(blob);
             const timestamp = new Date().toLocaleString();
             const newRecording = {
@@ -476,7 +527,8 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
               timestamp,
               blob,
               url,
-              duration: null
+              duration: null, // Could calculate if needed
+              mimeType
             };
 
             setRecordings(prev => [...prev, newRecording]);
@@ -488,6 +540,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
           setIsRecording(true);
         } catch (error) {
           console.error('Error starting recording:', error);
+          alert('Recording failed. Please ensure microphone access is granted and try again.');
         }
       }, []);
 
@@ -514,7 +567,14 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
       const downloadRecording = useCallback((recording) => {
         const a = document.createElement('a');
         a.href = recording.url;
-        a.download = `voice-recording-${recording.id}.webm`;
+        // Determine file extension based on mimeType
+        let ext = 'webm';
+        if (recording.mimeType) {
+          if (recording.mimeType.includes('mp4')) ext = 'mp4';
+          else if (recording.mimeType.includes('aac')) ext = 'aac';
+          else if (recording.mimeType.includes('m4a')) ext = 'm4a';
+        }
+        a.download = `voice-recording-${recording.id}.${ext}`;
         a.click();
       }, []);
 
@@ -912,10 +972,26 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
             <div className="floating-bubble">
               {!bubbleExpanded ? (
                 <button
-                  onClick={() => setBubbleExpanded(true)}
-                  className={`w-20 h-16 rounded-full shadow-lg flex items-center justify-center text-white font-bold text-sm pitch-indicator ${getPitchColor()}`}
+                  onClick={() => {
+                    if (!micActive) {
+                      activateMicrophone();
+                    }
+                    setBubbleExpanded(true);
+                  }}
+                  className={`relative w-20 h-16 rounded-full shadow-lg flex flex-col items-center justify-center text-white font-bold text-sm pitch-indicator ${micActive ? getPitchColor() : 'bg-gray-400'}`}
+                  style={{
+                    animation: 'pulse 2s infinite',
+                    cursor: 'pointer',
+                    border: '2px solid rgba(255,255,255,0.5)'
+                  }}
+                  title={micActive ? "Click to expand controls" : "Click to activate microphone"}
                 >
-                  {getPitchStatus()}
+                  <div style={{fontSize: '18px', marginTop: '-4px'}}>
+                    {micActive ? getPitchStatus() : '🔇'}
+                  </div>
+                  <div style={{fontSize: '10px', marginTop: '2px', opacity: 0.9}}>
+                    {micActive ? '⬆️' : 'TAP'}
+                  </div>
                 </button>
               ) : (
                 <div className="bg-white rounded-2xl shadow-xl p-4 w-48">
@@ -976,12 +1052,12 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                   <div className="space-y-2">
                     <button
                       onClick={isRecording ? stopRecording : startRecording}
-                      disabled={!audioInitialized}
+                      disabled={!micActive}
                       className={`w-full py-2 rounded-lg text-sm text-white font-semibold flex items-center justify-center gap-2 ${
-                        !audioInitialized ? 'bg-gray-300 cursor-not-allowed' :
+                        !micActive ? 'bg-gray-300 cursor-not-allowed' :
                         isRecording ? 'bg-red-600' : 'bg-purple-600'
                       }`}
-                      title={!audioInitialized ? 'Activate microphone first' : ''}
+                      title={!micActive ? 'Activate microphone first' : ''}
                     >
                       {isRecording && <span className="inline-block w-3 h-3 bg-white rounded-full animate-pulse"></span>}
                       {isRecording ? 'Stop Recording' : 'Record'}
