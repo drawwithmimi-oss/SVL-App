@@ -649,7 +649,7 @@ Dimanche, Alice, Papa et Papy quittent Malibou. Ils rentrent affamés. À table,
                 <div className="bg-white training-card p-8">
                   <h2 className="text-2xl brand-heading mb-6" style={{color: 'var(--brand-grey)'}}>📚 Select Reading Material</h2>
                   <div className="space-y-3">
-                    {readings.map((reading) => (
+                    {readings.filter(r => r.id !== 'exercises-link').map((reading) => (
                       <button
                         key={reading.id}
                         onClick={() => setSelectedReading(reading)}
@@ -673,6 +673,33 @@ Dimanche, Alice, Papa et Papy quittent Malibou. Ils rentrent affamés. À table,
                       </button>
                     ))}
                   </div>
+
+                  {/* Switch to Exercises button */}
+                  <button
+                    onClick={() => {
+                      const exercises = readings.find(r => r.id === 'exercises-link');
+                      if (exercises) setSelectedReading(exercises);
+                    }}
+                    className="w-full mt-6 p-4 border-2 transition-all duration-300 transform hover:-translate-y-1 font-bold uppercase tracking-wide"
+                    style={{
+                      borderColor: 'var(--brand-purple)',
+                      borderRadius: '15px',
+                      backgroundColor: 'var(--brand-beige)',
+                      color: 'var(--brand-purple)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.backgroundColor = 'var(--brand-purple)';
+                      e.target.style.color = 'white';
+                      e.target.style.boxShadow = '0 8px 25px rgba(144, 77, 255, 0.3)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.backgroundColor = 'var(--brand-beige)';
+                      e.target.style.color = 'var(--brand-purple)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  >
+                    📋 Switch to Exercises
+                  </button>
                 </div>
               </>
             ) : (
