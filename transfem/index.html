@@ -124,6 +124,7 @@
       const [showRecordingsModal, setShowRecordingsModal] = useState(false);
       const mediaRecorderRef = useRef(null);
       const recordingChunksRef = useRef([]);
+      const audioRefs = useRef({});
 
       /* Check URL params on load to auto-select exercises */
       useEffect(() => {
@@ -1081,9 +1082,18 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
 
                           {/* Audio Player */}
                           <audio
+                            ref={(el) => { if (el) audioRefs.current[recording.id] = el; }}
                             controls
                             playsinline
+                            preload="auto"
                             src={recording.url}
+                            onLoadedMetadata={(e) => {
+                              e.target.volume = 1.0; // Maximum volume
+                              // Force iOS to use loudspeaker
+                              if (e.target.webkitSetPresentationMode) {
+                                e.target.webkitSetPresentationMode('inline');
+                              }
+                            }}
                             className="w-full mb-3"
                             style={{height: '40px'}}
                           />
