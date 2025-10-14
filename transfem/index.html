@@ -581,6 +581,12 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
       }, [timbre]);
 
       useEffect(() => {
+        if (oscillatorRef.current) {
+          oscillatorRef.current.frequency.value = notes[selectedNote];
+        }
+      }, [selectedNote]);
+
+      useEffect(() => {
         if (lowpassRef.current) {
           lowpassRef.current.frequency.value = softenHighs ? 2400 : 18000;
         }
@@ -656,10 +662,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                   </button>
                   {selectedReading && selectedReading.id === 'exercises-link' && (
                     <button
-                      onClick={() => {
-                        const femMonologue = readings.find(r => r.id === 'fem-monologue');
-                        if (femMonologue) setSelectedReading(femMonologue);
-                      }}
+                      onClick={() => setSelectedReading(null)}
                       className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
                       onMouseOver={(e) => {
                         e.target.style.backgroundColor = 'white';
@@ -855,18 +858,30 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                             </a>
 
                             {/* Digital View Button */}
-                            <a
-                              href={resource.digitalPage}
-                              className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
-                              style={{
-                                backgroundColor: 'var(--brand-pink)',
-                                color: 'var(--brand-grey)',
-                                textDecoration: 'none',
-                                boxShadow: '0 4px 15px rgba(255, 162, 254, 0.3)'
-                              }}
-                            >
-                              📱 View in App
-                            </a>
+                            {resource.status === 'available' ? (
+                              <a
+                                href={resource.digitalPage}
+                                className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
+                                style={{
+                                  backgroundColor: 'var(--brand-pink)',
+                                  color: 'var(--brand-grey)',
+                                  textDecoration: 'none',
+                                  boxShadow: '0 4px 15px rgba(255, 162, 254, 0.3)'
+                                }}
+                              >
+                                📱 View in App
+                              </a>
+                            ) : (
+                              <div
+                                className="text-center py-3 px-4 rounded-lg font-bold text-sm cursor-not-allowed"
+                                style={{
+                                  backgroundColor: '#e5e7eb',
+                                  color: '#9ca3af'
+                                }}
+                              >
+                                📱 Coming Soon
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

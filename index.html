@@ -464,14 +464,6 @@
                     category.status === 'Available' ? '' : 'cursor-not-allowed opacity-75'
                   }`}
                 >
-                  {/* Status Badge */}
-                  <div className="status-badge" style={{
-                    backgroundColor: category.status === 'Available' ? 'var(--brand-yellow)' : '#e5e7eb',
-                    color: category.status === 'Available' ? 'var(--brand-grey)' : '#9ca3af'
-                  }}>
-                    {category.status}
-                  </div>
-
                   <h3>{category.title}</h3>
 
                   {category.status === 'Available' && category.id === 'resources' && (
