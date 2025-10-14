@@ -1014,10 +1014,25 @@ Hoy viernes, me he despertado pensando en ella`
                             preload="auto"
                             src={recording.url}
                             onLoadedMetadata={(e) => {
-                              e.target.volume = 1.0; // Maximum volume
+                              // Set maximum volume
+                              e.target.volume = 1.0;
+
                               // Force iOS to use loudspeaker
                               if (e.target.webkitSetPresentationMode) {
                                 e.target.webkitSetPresentationMode('inline');
+                              }
+
+                              // iPad-specific: Force playback through main speakers
+                              const isIPad = /iPad/.test(navigator.userAgent) ||
+                                             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+                              if (isIPad) {
+                                // Force audio to load and prepare for playback
+                                e.target.load();
+                                // Set audio to maximum gain
+                                if (e.target.webkitAudioContext) {
+                                  e.target.volume = 1.0;
+                                }
                               }
                             }}
                             className="w-full mb-3"
