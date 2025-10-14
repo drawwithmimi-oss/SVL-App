@@ -650,25 +650,6 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                       → Switch to Reading
                     </button>
                   )}
-                  {selectedReading && selectedReading.id !== 'exercises-link' && !selectedReading.isResourceList && (
-                    <button
-                      onClick={() => {
-                        const exercises = readings.find(r => r.id === 'exercises-link');
-                        if (exercises) setSelectedReading(exercises);
-                      }}
-                      className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
-                      onMouseOver={(e) => {
-                        e.target.style.backgroundColor = 'white';
-                        e.target.style.color = 'var(--brand-purple)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.target.style.backgroundColor = 'transparent';
-                        e.target.style.color = 'white';
-                      }}
-                    >
-                      → Switch to Exercises
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
