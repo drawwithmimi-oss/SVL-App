@@ -346,6 +346,21 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         detect();
       }, []);
 
+      // Pause pitch detection (for playback to get full volume on iOS)
+      const pausePitchDetection = useCallback(() => {
+        if (pitchDetectionRef.current) {
+          cancelAnimationFrame(pitchDetectionRef.current);
+          pitchDetectionRef.current = null;
+        }
+      }, []);
+
+      // Resume pitch detection
+      const resumePitchDetection = useCallback(() => {
+        if (micActive && !pitchDetectionRef.current) {
+          startPitchDetection();
+        }
+      }, [micActive, startPitchDetection]);
+
       /* Start/Stop drone */
       const startDrone = useCallback(async () => {
         if (!audioContextRef.current) return;
@@ -1107,8 +1122,8 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                                   const source = ctx.createMediaElementSource(audioElement);
                                   const gainNode = ctx.createGain();
 
-                                  // 2.5x volume boost for iOS playback
-                                  gainNode.gain.value = 2.5;
+                                  // 4x volume boost for iOS playback
+                                  gainNode.gain.value = 4.0;
 
                                   // Connect: audio element -> gain -> speakers
                                   source.connect(gainNode);
@@ -1122,6 +1137,9 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                                 console.log('Web Audio boost unavailable, using standard playback');
                               }
                             }}
+                            onPlay={pausePitchDetection}
+                            onPause={resumePitchDetection}
+                            onEnded={resumePitchDetection}
                             className="w-full mb-3"
                             style={{height: '40px'}}
                           />
