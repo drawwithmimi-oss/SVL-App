@@ -109,6 +109,7 @@
       const [micActive, setMicActive] = useState(false);
       const [showBubble, setShowBubble] = useState(true); // Auto-show monitor
       const [bubbleExpanded, setBubbleExpanded] = useState(false);
+      const [showSettingsModal, setShowSettingsModal] = useState(false);
       const [selectedReading, setSelectedReading] = useState(null);
       const [fontSize, setFontSize] = useState('large');
 
@@ -610,24 +611,61 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
           {/* Header */}
           <header className="safe-top" style={{backgroundColor: 'var(--brand-purple)', color: 'white', boxShadow: '0 4px 20px rgba(144, 77, 255, 0.3)'}}>
             <div className="px-6 py-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => window.location.href = '../'}
-                  className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
-                  onMouseOver={(e) => {
-                    e.target.style.backgroundColor = 'white';
-                    e.target.style.color = 'var(--brand-purple)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.backgroundColor = 'transparent';
-                    e.target.style.color = 'white';
-                  }}
-                >
-                  💜 ← Back to Main
-                </button>
-                <div>
-                  <h1 className="text-3xl font-bold uppercase tracking-wide text-white drop-shadow-md" style={{fontFamily: "'Averia Serif Libre', serif"}}>💜 Transmasc Voice Training</h1>
-                  <p className="text-lg font-medium text-white opacity-90" style={{fontFamily: "'Averia Serif Libre', serif"}}>Lower register voice practice with real-time feedback</p>
+              <div className="flex flex-col items-center gap-4">
+                <h1 className="text-3xl font-bold uppercase tracking-wide text-white drop-shadow-md text-center" style={{fontFamily: "'Averia Serif Libre', serif"}}>💜 Transmasc Voice Training</h1>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => window.location.href = '../'}
+                    className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
+                    onMouseOver={(e) => {
+                      e.target.style.backgroundColor = 'white';
+                      e.target.style.color = 'var(--brand-purple)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                      e.target.style.color = 'white';
+                    }}
+                  >
+                    ← Back to Main
+                  </button>
+                  {selectedReading && selectedReading.id === 'exercises-link' && (
+                    <button
+                      onClick={() => {
+                        const firstReading = readings.find(r => r.id !== 'exercises-link');
+                        if (firstReading) setSelectedReading(firstReading);
+                      }}
+                      className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
+                      onMouseOver={(e) => {
+                        e.target.style.backgroundColor = 'white';
+                        e.target.style.color = 'var(--brand-purple)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.target.style.backgroundColor = 'transparent';
+                        e.target.style.color = 'white';
+                      }}
+                    >
+                      → Switch to Reading
+                    </button>
+                  )}
+                  {selectedReading && selectedReading.id !== 'exercises-link' && !selectedReading.isResourceList && (
+                    <button
+                      onClick={() => {
+                        const exercises = readings.find(r => r.id === 'exercises-link');
+                        if (exercises) setSelectedReading(exercises);
+                      }}
+                      className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
+                      onMouseOver={(e) => {
+                        e.target.style.backgroundColor = 'white';
+                        e.target.style.color = 'var(--brand-purple)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.target.style.backgroundColor = 'transparent';
+                        e.target.style.color = 'white';
+                      }}
+                    >
+                      → Switch to Exercises
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -650,141 +688,6 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
 
             {!selectedReading ? (
               <>
-                {/* Drone & Monitor */}
-                <div className="bg-white training-card p-8 mb-8">
-                  <h2 className="text-2xl brand-heading mb-6" style={{color: 'var(--brand-grey)'}}>🎵 Pitch Control</h2>
-
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {/* Note */}
-                    <div>
-                      <label className="block text-sm font-bold uppercase tracking-wide mb-3" style={{color: 'var(--brand-grey)'}}>
-                        Target Note
-                      </label>
-                      <select
-                        value={selectedNote}
-                        onChange={(e) => setSelectedNote(e.target.value)}
-                        className="w-full p-4 text-lg border-2 font-medium"
-                        style={{borderColor: 'var(--brand-blue)', borderRadius: '15px', backgroundColor: 'var(--brand-beige)'}}
-                      >
-                        {Object.entries(notes).map(([note, freq]) => (
-                          <option key={note} value={note}>
-                            {note} ({Math.round(freq)} Hz)
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* NEW: Timbre */}
-                    <div>
-                      <label className="block text-sm font-bold uppercase tracking-wide mb-3" style={{color: 'var(--brand-grey)'}}>
-                        Timbre (tone color)
-                      </label>
-                      <select
-                        value={timbre}
-                        onChange={(e) => setTimbre(e.target.value)}
-                        className="w-full p-4 text-lg border-2 font-medium"
-                        style={{borderColor: 'var(--brand-blue)', borderRadius: '15px', backgroundColor: 'var(--brand-beige)'}}
-                      >
-                        <option value="sine">Sine — soft / pure</option>
-                        <option value="triangle">Triangle — warm</option>
-                        <option value="sawtooth">Saw — bright</option>
-                        <option value="square">Square — hollow</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Volume slider */}
-                  <div className="mt-4">
-                    <label className="block text-sm font-bold uppercase tracking-wide mb-3" style={{color: 'var(--brand-grey)'}}>
-                      Drone Volume: <span className="font-bold" style={{color: 'var(--brand-blue)'}}>{volumePct}%</span>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="200"
-                      step="5"
-                      value={volumePct}
-                      onChange={(e) => setVolumePct(parseInt(e.target.value, 10))}
-                      className="w-full"
-                      aria-label="Drone volume percent"
-                      style={{accentColor: 'var(--brand-blue)'}}
-                    />
-                    <p className="text-xs font-medium mt-2" style={{color: 'var(--brand-grey)', opacity: '0.7'}}>
-                      100% = original loudness. 200% = twice the original (safe).
-                    </p>
-                  </div>
-
-                  {/* NEW: Boost / Soften toggles */}
-                  <div className="mt-4 grid sm:grid-cols-2 gap-3">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={phoneBoost}
-                        onChange={(e)=>setPhoneBoost(e.target.checked)}
-                      />
-                      <span className="text-sm font-bold uppercase tracking-wide" style={{color: 'var(--brand-grey)'}}>
-                        Phone Boost (EQ + compressor)
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={softenHighs}
-                        onChange={(e)=>setSoftenHighs(e.target.checked)}
-                      />
-                      <span className="text-sm font-bold uppercase tracking-wide" style={{color: 'var(--brand-grey)'}}>
-                        Soften highs (less metallic)
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-6 mb-4">
-                    <button
-                      onClick={isDronePlaying ? stopDrone : startDrone}
-                      disabled={!audioInitialized}
-                      className={`py-4 text-lg font-bold uppercase tracking-wide transition-all duration-300 transform hover:-translate-y-1 ${
-                        !audioInitialized
-                          ? 'opacity-50 cursor-not-allowed'
-                          : ''
-                      }`}
-                      style={{
-                        borderRadius: '15px',
-                        backgroundColor: !audioInitialized
-                          ? '#e5e7eb'
-                          : isDronePlaying
-                          ? 'var(--brand-orange)'
-                          : 'var(--brand-blue)',
-                        color: !audioInitialized ? 'var(--brand-grey)' : 'white',
-                        boxShadow: !audioInitialized ? 'none' : '0 8px 20px rgba(111, 129, 255, 0.4)',
-                        border: !audioInitialized ? 'none' : '2px solid rgba(255, 255, 255, 0.3)'
-                      }}
-                    >
-                      {isDronePlaying ? '⏹ Stop Drone' : '▶ Start Drone'}
-                    </button>
-
-                  </div>
-
-                  {audioInitialized && (
-                    <div className="text-center p-6 rounded-2xl" style={{backgroundColor: 'white', border: '3px solid var(--brand-blue)', boxShadow: '0 8px 25px rgba(111, 129, 255, 0.2)'}}>
-                      <div className="text-sm font-bold uppercase tracking-wide mb-2" style={{color: 'var(--brand-grey)'}}>Current Pitch</div>
-                      <div className={`text-3xl font-bold mb-2`} style={{
-                        color: currentPitch === 0
-                          ? '#9ca3af'
-                          : Math.abs(currentPitch - notes[selectedNote]) < 5
-                          ? '#22c55e'
-                          : Math.abs(currentPitch - notes[selectedNote]) < 15
-                          ? '#f97316'
-                          : '#ef4444'
-                      }}>
-                        {currentPitch > 0 ? `${currentPitch} Hz` : 'No signal'}
-                      </div>
-                      <div className="text-sm font-medium" style={{color: 'var(--brand-grey)', opacity: '0.8'}}>
-                        Target: {Math.round(notes[selectedNote])} Hz
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Reading selection */}
                 <div className="bg-white training-card p-8">
                   <h2 className="text-2xl brand-heading mb-6" style={{color: 'var(--brand-grey)'}}>📚 Select Reading Material</h2>
@@ -830,24 +733,26 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                       ← Back to Materials
                     </button>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        const sizes = ['small', 'medium', 'large', 'xlarge'];
-                        const current = sizes.indexOf(fontSize);
-                        setFontSize(sizes[(current + 1) % sizes.length]);
-                      }}
-                      className="px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all duration-300 transform hover:-translate-y-1"
-                      style={{
-                        borderRadius: '10px',
-                        background: 'linear-gradient(135deg, var(--brand-yellow), var(--brand-orange))',
-                        color: 'white',
-                        boxShadow: '0 4px 15px rgba(253, 213, 90, 0.3)'
-                      }}
-                    >
-                      Aa Size
-                    </button>
-                  </div>
+                  {!selectedReading.isResourceList && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const sizes = ['small', 'medium', 'large', 'xlarge'];
+                          const current = sizes.indexOf(fontSize);
+                          setFontSize(sizes[(current + 1) % sizes.length]);
+                        }}
+                        className="px-4 py-2 text-sm font-bold uppercase tracking-wide transition-all duration-300 transform hover:-translate-y-1"
+                        style={{
+                          borderRadius: '10px',
+                          background: 'linear-gradient(135deg, var(--brand-yellow), var(--brand-orange))',
+                          color: 'white',
+                          boxShadow: '0 4px 15px rgba(253, 213, 90, 0.3)'
+                        }}
+                      >
+                        Aa Size
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Image if present */}
@@ -908,30 +813,18 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                           </a>
 
                           {/* Digital View Button */}
-                          {resource.status === 'available' ? (
-                            <a
-                              href={resource.digitalPage}
-                              className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
-                              style={{
-                                backgroundColor: 'var(--brand-pink)',
-                                color: 'var(--brand-grey)',
-                                textDecoration: 'none',
-                                boxShadow: '0 4px 15px rgba(255, 162, 254, 0.3)'
-                              }}
-                            >
-                              📱 View in App
-                            </a>
-                          ) : (
-                            <div
-                              className="text-center py-3 px-4 rounded-lg font-bold text-sm cursor-not-allowed"
-                              style={{
-                                backgroundColor: '#e5e7eb',
-                                color: '#9ca3af'
-                              }}
-                            >
-                              📱 Coming Soon
-                            </div>
-                          )}
+                          <a
+                            href={resource.digitalPage}
+                            className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
+                            style={{
+                              backgroundColor: 'var(--brand-pink)',
+                              color: 'var(--brand-grey)',
+                              textDecoration: 'none',
+                              boxShadow: '0 4px 15px rgba(255, 162, 254, 0.3)'
+                            }}
+                          >
+                            📱 View in App
+                          </a>
                         </div>
                       </div>
                     ))}
@@ -975,12 +868,21 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                 <div className="bg-white rounded-2xl shadow-xl p-4 w-48">
                   <div className="flex justify-between items-center mb-3">
                     <span className="font-semibold text-sm">Pitch Monitor</span>
-                    <button
-                      onClick={() => setBubbleExpanded(false)}
-                      className="text-gray-500 text-xl"
-                    >
-                      ×
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowSettingsModal(true)}
+                        className="text-gray-600 hover:text-purple-600 text-lg"
+                        title="Pitch Control Settings"
+                      >
+                        ⚙️
+                      </button>
+                      <button
+                        onClick={() => setBubbleExpanded(false)}
+                        className="text-gray-500 text-xl"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
 
                   <div className="text-center mb-3">
@@ -1161,6 +1063,130 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                     style={{backgroundColor: 'var(--brand-grey)'}}
                   >
                     Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Pitch Control Settings Modal */}
+          {showSettingsModal && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowSettingsModal(false)}
+            >
+              <div
+                className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between" style={{backgroundColor: 'var(--brand-blue)'}}>
+                  <h2 className="text-xl font-bold text-white">🎵 Pitch Control Settings</h2>
+                  <button
+                    onClick={() => setShowSettingsModal(false)}
+                    className="text-white text-2xl hover:bg-white hover:bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Modal Content */}
+                <div className="p-6 space-y-4">
+                  {/* Target Note */}
+                  <div>
+                    <label className="block text-sm font-bold uppercase tracking-wide mb-2" style={{color: 'var(--brand-grey)'}}>
+                      Target Note
+                    </label>
+                    <select
+                      value={selectedNote}
+                      onChange={(e) => setSelectedNote(e.target.value)}
+                      className="w-full p-3 text-base border-2 font-medium rounded-lg"
+                      style={{borderColor: 'var(--brand-blue)', backgroundColor: 'var(--brand-beige)'}}
+                    >
+                      {Object.entries(notes).map(([note, freq]) => (
+                        <option key={note} value={note}>
+                          {note} ({Math.round(freq)} Hz)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Timbre */}
+                  <div>
+                    <label className="block text-sm font-bold uppercase tracking-wide mb-2" style={{color: 'var(--brand-grey)'}}>
+                      Timbre (tone color)
+                    </label>
+                    <select
+                      value={timbre}
+                      onChange={(e) => setTimbre(e.target.value)}
+                      className="w-full p-3 text-base border-2 font-medium rounded-lg"
+                      style={{borderColor: 'var(--brand-blue)', backgroundColor: 'var(--brand-beige)'}}
+                    >
+                      <option value="sine">Sine — soft / pure</option>
+                      <option value="triangle">Triangle — warm</option>
+                      <option value="sawtooth">Saw — bright</option>
+                      <option value="square">Square — hollow</option>
+                    </select>
+                  </div>
+
+                  {/* Volume slider */}
+                  <div>
+                    <label className="block text-sm font-bold uppercase tracking-wide mb-2" style={{color: 'var(--brand-grey)'}}>
+                      Drone Volume: <span className="font-bold" style={{color: 'var(--brand-blue)'}}>{volumePct}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="200"
+                      step="5"
+                      value={volumePct}
+                      onChange={(e) => setVolumePct(parseInt(e.target.value, 10))}
+                      className="w-full"
+                      aria-label="Drone volume percent"
+                      style={{accentColor: 'var(--brand-blue)'}}
+                    />
+                    <p className="text-xs font-medium mt-1" style={{color: 'var(--brand-grey)', opacity: '0.7'}}>
+                      100% = original loudness. 200% = twice the original (safe).
+                    </p>
+                  </div>
+
+                  {/* Boost / Soften toggles */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={phoneBoost}
+                        onChange={(e) => setPhoneBoost(e.target.checked)}
+                        className="w-4 h-4"
+                        style={{accentColor: 'var(--brand-blue)'}}
+                      />
+                      <span className="text-sm font-bold uppercase tracking-wide" style={{color: 'var(--brand-grey)'}}>
+                        Phone Boost (EQ + compressor)
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={softenHighs}
+                        onChange={(e) => setSoftenHighs(e.target.checked)}
+                        className="w-4 h-4"
+                        style={{accentColor: 'var(--brand-blue)'}}
+                      />
+                      <span className="text-sm font-bold uppercase tracking-wide" style={{color: 'var(--brand-grey)'}}>
+                        Soften highs (less metallic)
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 border-t border-gray-200 bg-gray-50">
+                  <button
+                    onClick={() => setShowSettingsModal(false)}
+                    className="w-full py-2 rounded-lg text-sm font-semibold text-white"
+                    style={{backgroundColor: 'var(--brand-blue)'}}
+                  >
+                    Done
                   </button>
                 </div>
               </div>
