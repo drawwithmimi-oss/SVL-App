@@ -289,7 +289,7 @@
       return (
         <div className="min-h-screen safe-top safe-bottom" style={{backgroundColor: 'var(--brand-beige)'}}>
           {/* Header */}
-          <header className="sticky top-0 z-50 safe-top" style={{backgroundColor: 'var(--brand-purple)', color: 'white', boxShadow: '0 4px 20px rgba(144, 77, 255, 0.3)'}}>
+          <header className="safe-top" style={{backgroundColor: 'var(--brand-purple)', color: 'white', boxShadow: '0 4px 20px rgba(144, 77, 255, 0.3)'}}>
             <div className="px-6 py-4">
               <div className="flex items-center gap-4">
                 <button
@@ -300,7 +300,6 @@
                 </button>
                 <div>
                   <h1 className="text-3xl font-bold uppercase tracking-wide text-white drop-shadow-md" style={{fontFamily: "'Averia Serif Libre', serif"}}>📋 Resources / Admin</h1>
-                  <p className="text-lg font-medium text-white opacity-90" style={{fontFamily: "'Averia Serif Libre', serif"}}>Helpful resources and community links</p>
                 </div>
               </div>
             </div>
@@ -316,18 +315,12 @@
                   onClick={() => handleCardClick(resource)}
                   style={{cursor: resource.status === 'available' ? 'pointer' : 'not-allowed'}}
                 >
-                  {/* Status Badge */}
-                  <div className={`status-badge ${resource.status === 'coming-soon' ? 'coming-soon' : ''}`}>
-                    {resource.status === 'available' ? 'Available' : 'Coming Soon'}
-                  </div>
-
                   {/* Discord Icon */}
                   {resource.icon && (
                     <img src={resource.icon} alt="Discord" className="discord-icon" />
                   )}
 
                   <h3>{resource.title}</h3>
-                  <div className="description">{resource.description}</div>
 
                   {/* Button */}
                   {resource.status === 'available' && resource.link ? (
