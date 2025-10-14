@@ -475,12 +475,12 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
 
           let options;
           if (isIOS || (isSafari && !MediaRecorder.isTypeSupported('audio/webm'))) {
-            // iOS/Safari: Use empty options to let browser choose (will use mp4/aac)
-            options = {};
+            // iOS/Safari: High quality audio for voice training
+            options = { audioBitsPerSecond: 192000 };
           } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-            options = { mimeType: 'audio/webm' };
+            options = { mimeType: 'audio/webm', audioBitsPerSecond: 192000 };
           } else {
-            options = {}; // Browser default
+            options = { audioBitsPerSecond: 192000 }; // High quality default
           }
 
           const mediaRecorder = new MediaRecorder(micStreamRef.current, options);
@@ -1082,6 +1082,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                           {/* Audio Player */}
                           <audio
                             controls
+                            playsinline
                             src={recording.url}
                             className="w-full mb-3"
                             style={{height: '40px'}}
