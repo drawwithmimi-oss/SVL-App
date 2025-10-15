@@ -616,14 +616,20 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
 
       /* Stop mic when recordings modal opens (for loud playback on iOS) */
       useEffect(() => {
-        if (showRecordingsModal) {
-          console.log('Recordings modal opened - stopping microphone');
-          stopMicrophoneForPlayback();
-        } else if (micActive && !micStreamRef.current) {
-          console.log('Recordings modal closed - restarting microphone');
-          restartMicrophoneAfterPlayback();
-        }
-      }, [showRecordingsModal, micActive]);
+        const handleModalMicrophone = async () => {
+          if (showRecordingsModal) {
+            console.log('Recordings modal opened - stopping microphone');
+            stopMicrophoneForPlayback();
+            // Give Safari time to fully release microphone and update audio route
+            await new Promise(resolve => setTimeout(resolve, 200));
+            console.log('Microphone released, ready for playback');
+          } else if (micActive && !micStreamRef.current) {
+            console.log('Recordings modal closed - restarting microphone');
+            restartMicrophoneAfterPlayback();
+          }
+        };
+        handleModalMicrophone();
+      }, [showRecordingsModal, micActive, stopMicrophoneForPlayback, restartMicrophoneAfterPlayback]);
 
       /* Live updates while playing */
       useEffect(() => {
@@ -1063,11 +1069,11 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                           // Stop mic BEFORE starting playback (critical for iOS volume)
                           stopMicrophoneForPlayback();
 
-                          // Wait a moment for mic to fully release
-                          await new Promise(resolve => setTimeout(resolve, 100));
+                          // Wait for mic to fully release (Safari needs time to update audio route)
+                          await new Promise(resolve => setTimeout(resolve, 200));
 
                           const audio = new Audio(lastRecording.url);
-                          audio.onpause = restartMicrophoneAfterPlayback;
+                          // Only restart on ended (not pause - that causes duplicate restarts)
                           audio.onended = restartMicrophoneAfterPlayback;
                           audio.play();
                         }}
@@ -1152,9 +1158,6 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                             src={recording.url}
                             className="w-full mb-3"
                             style={{height: '40px'}}
-                            onPlay={stopMicrophoneForPlayback}
-                            onEnded={restartMicrophoneAfterPlayback}
-                            onPause={restartMicrophoneAfterPlayback}
                           />
 
                           {/* Action Buttons */}
