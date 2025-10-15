@@ -302,7 +302,10 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           sourceRef.current.connect(analyserRef.current);
 
           setAudioInitialized(true);
-          startPitchDetection();
+
+          // DISABLED: Pitch detection keeps mic active on iOS
+          // startPitchDetection();
+          console.log('⚠️ Pitch detection DISABLED for testing - mic should release properly');
         } catch (err) {
           console.error('Microphone error:', err);
           if (err.name === 'NotAllowedError') {
@@ -415,18 +418,20 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         // NOTE: We keep AudioContext alive (demo does this too)
       }, [isRecording]);
 
-      // Restart microphone after playback
+      // Restart microphone after playback - DISABLED FOR TESTING
       const restartMicrophoneAfterPlayback = useCallback(async () => {
-        console.log('Restarting microphone after playback, micActive:', micActive);
+        console.log('⚠️ restartMicrophoneAfterPlayback called - DISABLED FOR TESTING');
+        console.log('Mic will NOT restart automatically - user must reactivate manually');
 
-        if (!micActive) return;
+        // DISABLED: Do NOT restart mic automatically
+        // This allows us to test if mic stays off during playback
 
-        try {
-          // Re-initialize microphone (this will create new stream and restart pitch detection)
-          await initAudio();
-        } catch (error) {
-          console.error('Error restarting microphone:', error);
-        }
+        // if (!micActive) return;
+        // try {
+        //   await initAudio();
+        // } catch (error) {
+        //   console.error('Error restarting microphone:', error);
+        // }
       }, [micActive, initAudio]);
 
       /* Start/Stop drone */
