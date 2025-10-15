@@ -126,7 +126,6 @@
       const [lastRecording, setLastRecording] = useState(null);
       const [showRecordingsModal, setShowRecordingsModal] = useState(false);
       const webAudioRecorderRef = useRef(null);
-      const recordingAudioContextRef = useRef(null);
       const audioRefs = useRef({});
 
       /* Check URL params on load to auto-select exercises */
@@ -153,6 +152,7 @@
       const oscillatorRef   = useRef(null);
       const gainNodeRef     = useRef(null);
       const analyserRef     = useRef(null);
+      const sourceRef       = useRef(null);  // MediaStreamSource node
       const micStreamRef    = useRef(null);
       const pitchDetectionRef = useRef(null);
 
@@ -296,10 +296,10 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           micStreamRef.current = stream;
           setMicPermission('granted');
 
-          const source = audioContextRef.current.createMediaStreamSource(stream);
+          sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
           analyserRef.current = audioContextRef.current.createAnalyser();
           analyserRef.current.fftSize = 2048;
-          source.connect(analyserRef.current);
+          sourceRef.current.connect(analyserRef.current);
 
           setAudioInitialized(true);
           startPitchDetection();
@@ -350,10 +350,20 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
       const stopMicrophoneForPlayback = useCallback(() => {
         console.log('Stopping microphone for playback');
 
-        // Stop pitch detection
+        // Stop pitch detection RAF loop
         if (pitchDetectionRef.current) {
           cancelAnimationFrame(pitchDetectionRef.current);
           pitchDetectionRef.current = null;
+        }
+
+        // Disconnect analyser from source (fully release audio graph)
+        if (sourceRef.current && analyserRef.current) {
+          try {
+            sourceRef.current.disconnect(analyserRef.current);
+          } catch (e) {
+            console.log('Source already disconnected:', e);
+          }
+          sourceRef.current = null;
         }
 
         // Stop microphone stream completely (iOS volume fix - matches demo behavior)
@@ -502,10 +512,13 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
 
         try {
-          // Create new AudioContext for recording (after getUserMedia, iOS requirement)
-          recordingAudioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+          // Use existing AudioContext for recording (single context like demo)
+          if (!audioContextRef.current) {
+            console.error('No audio context available');
+            return;
+          }
 
-          const input = recordingAudioContextRef.current.createMediaStreamSource(micStreamRef.current);
+          const input = audioContextRef.current.createMediaStreamSource(micStreamRef.current);
 
           // Create WebAudioRecorder with WAV format (universal compatibility)
           const recorder = new WebAudioRecorder(input, {
@@ -557,13 +570,8 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           webAudioRecorderRef.current.finishRecording();
           setIsRecording(false);
 
-          // Clean up recording audio context
-          if (recordingAudioContextRef.current) {
-            try {
-              recordingAudioContextRef.current.close();
-            } catch (e) {}
-            recordingAudioContextRef.current = null;
-          }
+          // Note: We keep audioContext alive (single context like demo)
+          // No need to close it here
         }
       }, [isRecording]);
 
@@ -601,7 +609,8 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           if (pitchDetectionRef.current) cancelAnimationFrame(pitchDetectionRef.current);
           if (oscillatorRef.current) { try { oscillatorRef.current.stop(); } catch {} }
           if (micStreamRef.current) micStreamRef.current.getTracks().forEach(t => t.stop());
-          if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} }
+          // NOTE: Keep audioContext alive like demo does - don't close it
+          // iOS needs the context to remain active for proper audio routing
         };
       }, [initAudio]);
 
@@ -1143,6 +1152,9 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                             src={recording.url}
                             className="w-full mb-3"
                             style={{height: '40px'}}
+                            onPlay={stopMicrophoneForPlayback}
+                            onEnded={restartMicrophoneAfterPlayback}
+                            onPause={restartMicrophoneAfterPlayback}
                           />
 
                           {/* Action Buttons */}
