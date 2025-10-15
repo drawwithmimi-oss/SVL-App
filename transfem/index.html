@@ -273,50 +273,12 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
       ];
 
-      /* Init mic + analyser */
+      /* Init mic + analyser - REMOVED (mic now only active during recording) */
       const initAudio = useCallback(async () => {
-        try {
-          // Create AudioContext first (iOS requires this before getUserMedia)
-          if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-          }
-
-          // iOS/Safari: AudioContext starts suspended, must resume with user gesture
-          if (audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
-          }
-
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false
-            }
-          });
-          micStreamRef.current = stream;
-          setMicPermission('granted');
-
-          sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
-          analyserRef.current = audioContextRef.current.createAnalyser();
-          analyserRef.current.fftSize = 2048;
-          sourceRef.current.connect(analyserRef.current);
-
-          setAudioInitialized(true);
-
-          // DISABLED: Pitch detection keeps mic active on iOS
-          // startPitchDetection();
-          console.log('⚠️ Pitch detection DISABLED for testing - mic should release properly');
-        } catch (err) {
-          console.error('Microphone error:', err);
-          if (err.name === 'NotAllowedError') {
-            setMicPermission('denied');
-          } else if (err.name === 'NotFoundError') {
-            console.error('No microphone found');
-            setMicPermission('denied');
-          } else {
-            setMicPermission('denied');
-          }
-        }
+        console.log('⚠️ initAudio() called but DISABLED - mic only activates during recording');
+        // OLD APPROACH: Request mic access immediately and keep it active
+        // NEW APPROACH: Only request mic when user clicks Record button (in startRecording)
+        setAudioInitialized(true);
       }, []);
 
       /* Pitch detection (simple dominant-bin) */
@@ -660,9 +622,9 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         a.click();
       }, []);
 
-      /* Keep mic + context lifecycle clean */
+      /* Component mount - NO automatic mic access (v2.1 change) */
       useEffect(() => {
-        initAudio();
+        initAudio(); // Now just sets audioInitialized flag, doesn't request mic
         // Default: enable boost on small screens
         try {
           if (window.matchMedia && window.matchMedia('(max-width: 480px)').matches) {
