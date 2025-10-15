@@ -1133,13 +1133,28 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                         }
 
                         if (micStreamRef.current) {
-                          const tracks = micStreamRef.current.getTracks();
-                          console.log('Tracks found:', tracks.length);
-                          tracks.forEach((track, i) => {
-                            console.log(`Track ${i}:`, track.label, 'state:', track.readyState);
+                          console.log('📍 micStreamRef exists:', micStreamRef.current);
+                          console.log('📍 Stream active?', micStreamRef.current.active);
+                          console.log('📍 Stream id:', micStreamRef.current.id);
+
+                          const audioTracks = micStreamRef.current.getAudioTracks();
+                          console.log('🎤 Audio tracks found:', audioTracks.length);
+
+                          audioTracks.forEach((track, i) => {
+                            console.log(`🎤 Track ${i}:`, track.label);
+                            console.log(`   - kind:`, track.kind);
+                            console.log(`   - enabled:`, track.enabled);
+                            console.log(`   - readyState:`, track.readyState);
+                            console.log(`   - muted:`, track.muted);
+
+                            console.log(`   → Calling track.stop()...`);
                             track.stop();
-                            console.log(`Track ${i} stopped, new state:`, track.readyState);
+
+                            console.log(`   - NEW readyState:`, track.readyState);
+                            console.log(`   - NEW enabled:`, track.enabled);
                           });
+
+                          console.log('📍 After stopping, stream active?', micStreamRef.current.active);
                           micStreamRef.current = null;
                           console.log('✅ Mic stream set to null');
                         } else {
