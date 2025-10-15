@@ -152,8 +152,7 @@
       const oscillatorRef   = useRef(null);
       const gainNodeRef     = useRef(null);
       const analyserRef     = useRef(null);
-      const sourceRef       = useRef(null);  // MediaStreamSource node for pitch detection
-      const recordingSourceRef = useRef(null);  // MediaStreamSource node for recording
+      const sourceRef       = useRef(null);  // SINGLE MediaStreamSource for BOTH pitch + recording
       const micStreamRef    = useRef(null);
       const pitchDetectionRef = useRef(null);
 
@@ -357,26 +356,15 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           pitchDetectionRef.current = null;
         }
 
-        // Disconnect analyser from source (fully release audio graph)
+        // Disconnect THE SINGLE source from analyser (fully release audio graph)
         if (sourceRef.current && analyserRef.current) {
           try {
-            sourceRef.current.disconnect(analyserRef.current);
+            sourceRef.current.disconnect();
+            console.log('✅ Source fully disconnected from ALL outputs');
           } catch (e) {
             console.log('Source already disconnected:', e);
           }
           sourceRef.current = null;
-        }
-
-        // CRITICAL: Also disconnect recording source if it exists!
-        // This was the smoking gun - recording source stayed connected!
-        if (recordingSourceRef.current) {
-          try {
-            recordingSourceRef.current.disconnect();
-            console.log('✅ Recording source disconnected during playback prep');
-          } catch (e) {
-            console.log('Recording source disconnect error:', e);
-          }
-          recordingSourceRef.current = null;
         }
 
         // Stop microphone stream completely (iOS volume fix - matches demo behavior)
@@ -526,16 +514,18 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
 
         try {
           // Use existing AudioContext for recording (single context like demo)
-          if (!audioContextRef.current) {
-            console.error('No audio context available');
+          if (!audioContextRef.current || !sourceRef.current) {
+            console.error('No audio context or source available');
             return;
           }
 
-          // Create and TRACK the MediaStreamSource for recording (critical for cleanup!)
-          recordingSourceRef.current = audioContextRef.current.createMediaStreamSource(micStreamRef.current);
+          // CRITICAL FIX: Use the SAME source node for recording!
+          // Creating a second source from the same stream keeps mic "active"
+          // We already have sourceRef from initAudio() - reuse it!
+          console.log('Using existing sourceRef for recording (single source approach)');
 
           // Create WebAudioRecorder with WAV format (universal compatibility)
-          const recorder = new WebAudioRecorder(recordingSourceRef.current, {
+          const recorder = new WebAudioRecorder(sourceRef.current, {
             workerDir: "../js/",
             encoding: 'wav',
             numChannels: 2, // Stereo like demo
@@ -584,17 +574,10 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           webAudioRecorderRef.current.finishRecording();
           setIsRecording(false);
 
-          // CRITICAL: Disconnect the recording's MediaStreamSource
-          // This was keeping the mic active even after recording stopped!
-          if (recordingSourceRef.current) {
-            try {
-              recordingSourceRef.current.disconnect();
-              console.log('✅ Recording source disconnected');
-            } catch (e) {
-              console.log('Recording source disconnect error:', e);
-            }
-            recordingSourceRef.current = null;
-          }
+          // Note: We DON'T disconnect sourceRef here - it's still being used for pitch detection!
+          // sourceRef stays connected to analyser for continuous pitch detection
+          // This is the key difference from the demo (which doesn't have pitch detection)
+          console.log('✅ Recording stopped, sourceRef stays connected for pitch detection');
 
           // Note: We keep audioContext alive (single context like demo)
         }
@@ -1116,23 +1099,13 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                           console.log('✅ Pitch detection cancelled');
                         }
 
-                        if (sourceRef.current && analyserRef.current) {
+                        if (sourceRef.current) {
                           try {
-                            sourceRef.current.disconnect(analyserRef.current);
+                            sourceRef.current.disconnect();
                             sourceRef.current = null;
-                            console.log('✅ Source disconnected');
+                            console.log('✅ Single source fully disconnected');
                           } catch (e) {
                             console.log('⚠️ Disconnect error:', e);
-                          }
-                        }
-
-                        if (recordingSourceRef.current) {
-                          try {
-                            recordingSourceRef.current.disconnect();
-                            recordingSourceRef.current = null;
-                            console.log('✅ Recording source disconnected');
-                          } catch (e) {
-                            console.log('⚠️ Recording source disconnect error:', e);
                           }
                         }
                       }}
