@@ -21,6 +21,9 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- WebAudioRecorder.js Library -->
+  <script src="../js/WebAudioRecorder.min.js"></script>
+
   <!-- Averia Serif Libre Font -->
   <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
 
@@ -122,8 +125,11 @@
       const [recordings, setRecordings] = useState([]);
       const [lastRecording, setLastRecording] = useState(null);
       const [showRecordingsModal, setShowRecordingsModal] = useState(false);
-      const mediaRecorderRef = useRef(null);
-      const recordingChunksRef = useRef([]);
+      const [recordingFormat, setRecordingFormat] = useState(() => {
+        return localStorage.getItem('recordingFormat') || 'wav';
+      });
+      const webAudioRecorderRef = useRef(null);
+      const recordingAudioContextRef = useRef(null);
       const audioRefs = useRef({});
 
       /* Check URL params on load to auto-select exercises */
@@ -157,9 +163,6 @@
       const lowpassRef   = useRef(null);  // soften highs
       const highshelfRef = useRef(null);  // gentle clarity bump when boost on
       const compressorRef= useRef(null);  // loudness control for phones
-
-      /* Playback volume boost: Store audio context & gain node per recording */
-      const playbackContextsRef = useRef(new Map());
 
       const notes = {
         'A3': 220.00, 'B3': 246.94, 'C4': 261.63, 'C#4': 277.18, 'D4': 293.66,
@@ -346,20 +349,32 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         detect();
       }, []);
 
-      // Pause pitch detection (for playback to get full volume on iOS)
-      const pausePitchDetection = useCallback(() => {
+      // Stop microphone completely during playback (like demo does)
+      const stopMicrophoneForPlayback = useCallback(() => {
+        // Stop pitch detection
         if (pitchDetectionRef.current) {
           cancelAnimationFrame(pitchDetectionRef.current);
           pitchDetectionRef.current = null;
         }
+
+        // Stop microphone stream completely (iOS volume fix)
+        if (micStreamRef.current) {
+          micStreamRef.current.getTracks().forEach(track => track.stop());
+          micStreamRef.current = null;
+        }
       }, []);
 
-      // Resume pitch detection
-      const resumePitchDetection = useCallback(() => {
-        if (micActive && !pitchDetectionRef.current) {
-          startPitchDetection();
+      // Restart microphone after playback
+      const restartMicrophoneAfterPlayback = useCallback(async () => {
+        if (!micActive) return;
+
+        try {
+          // Re-initialize microphone
+          await initAudio();
+        } catch (error) {
+          console.error('Error restarting microphone:', error);
         }
-      }, [micActive, startPitchDetection]);
+      }, [micActive]);
 
       /* Start/Stop drone */
       const startDrone = useCallback(async () => {
@@ -472,7 +487,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
       }, [selectedNote]);
 
-      // Recording functions
+      // Recording functions using WebAudioRecorder
       const startRecording = useCallback(async () => {
         if (!micStreamRef.current) {
           console.error('No microphone stream available');
@@ -480,39 +495,25 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
 
         try {
-          // Ensure AudioContext is running before recording (iOS requirement)
-          if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
-          }
+          // Create new AudioContext for recording (after getUserMedia, iOS requirement)
+          recordingAudioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
 
-          recordingChunksRef.current = [];
+          const input = recordingAudioContextRef.current.createMediaStreamSource(micStreamRef.current);
 
-          // iOS Safari fix: isTypeSupported() returns false for everything on iOS
-          // even though MediaRecorder works! Detect iOS/Safari directly.
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-          let options;
-          if (isIOS || (isSafari && !MediaRecorder.isTypeSupported('audio/webm'))) {
-            // iOS/Safari: High quality audio for voice training
-            options = { audioBitsPerSecond: 192000 };
-          } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-            options = { mimeType: 'audio/webm', audioBitsPerSecond: 192000 };
-          } else {
-            options = { audioBitsPerSecond: 192000 }; // High quality default
-          }
-
-          const mediaRecorder = new MediaRecorder(micStreamRef.current, options);
-
-          mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-              recordingChunksRef.current.push(event.data);
+          // Create WebAudioRecorder with selected format
+          const recorder = new WebAudioRecorder(input, {
+            workerDir: "../js/",
+            encoding: recordingFormat,
+            numChannels: 2, // Stereo like demo
+            onEncoderLoading: function(recorder, encoding) {
+              console.log("Loading " + encoding + " encoder...");
+            },
+            onEncoderLoaded: function(recorder, encoding) {
+              console.log(encoding + " encoder loaded");
             }
-          };
+          });
 
-          mediaRecorder.onstop = () => {
-            const mimeType = mediaRecorder.mimeType || 'audio/webm';
-            const blob = new Blob(recordingChunksRef.current, { type: mimeType });
+          recorder.onComplete = function(recorder, blob) {
             const url = URL.createObjectURL(blob);
             const timestamp = new Date().toLocaleString();
             const newRecording = {
@@ -520,27 +521,44 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
               timestamp,
               blob,
               url,
-              duration: null, // Could calculate if needed
-              mimeType
+              duration: null,
+              mimeType: 'audio/' + recordingFormat,
+              encoding: recordingFormat
             };
 
             setRecordings(prev => [...prev, newRecording]);
             setLastRecording(newRecording);
+            console.log("Encoding complete");
           };
 
-          mediaRecorderRef.current = mediaRecorder;
-          mediaRecorder.start();
+          recorder.setOptions({
+            timeLimit: 300, // 5 minutes max
+            encodeAfterRecord: true,
+            ogg: { quality: 0.5 },
+            mp3: { bitRate: 160 }
+          });
+
+          webAudioRecorderRef.current = recorder;
+          recorder.startRecording();
           setIsRecording(true);
         } catch (error) {
           console.error('Error starting recording:', error);
           alert('Recording failed. Please ensure microphone access is granted and try again.');
         }
-      }, []);
+      }, [recordingFormat]);
 
       const stopRecording = useCallback(() => {
-        if (mediaRecorderRef.current && isRecording) {
-          mediaRecorderRef.current.stop();
+        if (webAudioRecorderRef.current && isRecording) {
+          webAudioRecorderRef.current.finishRecording();
           setIsRecording(false);
+
+          // Clean up recording audio context
+          if (recordingAudioContextRef.current) {
+            try {
+              recordingAudioContextRef.current.close();
+            } catch (e) {}
+            recordingAudioContextRef.current = null;
+          }
         }
       }, [isRecording]);
 
@@ -560,13 +578,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
       const downloadRecording = useCallback((recording) => {
         const a = document.createElement('a');
         a.href = recording.url;
-        // Determine file extension based on mimeType
-        let ext = 'webm';
-        if (recording.mimeType) {
-          if (recording.mimeType.includes('mp4')) ext = 'mp4';
-          else if (recording.mimeType.includes('aac')) ext = 'aac';
-          else if (recording.mimeType.includes('m4a')) ext = 'm4a';
-        }
+        const ext = recording.encoding || 'wav';
         a.download = `voice-recording-${recording.id}.${ext}`;
         a.click();
       }, []);
@@ -1005,6 +1017,27 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                     </button>
                   </div>
 
+                  {/* Recording Format Selector */}
+                  <div className="mb-3">
+                    <label className="block text-sm font-semibold mb-1" style={{color: 'var(--brand-grey)'}}>
+                      Recording Format
+                    </label>
+                    <select
+                      value={recordingFormat}
+                      onChange={(e) => {
+                        setRecordingFormat(e.target.value);
+                        localStorage.setItem('recordingFormat', e.target.value);
+                      }}
+                      disabled={isRecording}
+                      className="w-full px-3 py-2 rounded-lg border-2 border-gray-300 text-sm"
+                      style={{backgroundColor: 'white', color: 'var(--brand-grey)'}}
+                    >
+                      <option value="wav">WAV (Waveform Audio) - Universal</option>
+                      <option value="mp3">MP3 (MPEG Audio) - Compressed</option>
+                      <option value="ogg">OGG (Ogg Vorbis) - Open Format</option>
+                    </select>
+                  </div>
+
                   {/* Recording controls */}
                   <div className="space-y-2">
                     <button
@@ -1024,6 +1057,9 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                       <button
                         onClick={() => {
                           const audio = new Audio(lastRecording.url);
+                          audio.onplay = stopMicrophoneForPlayback;
+                          audio.onpause = restartMicrophoneAfterPlayback;
+                          audio.onended = restartMicrophoneAfterPlayback;
                           audio.play();
                         }}
                         className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-pink-500"
@@ -1105,41 +1141,9 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                             playsinline
                             preload="auto"
                             src={recording.url}
-                            onLoadedMetadata={(e) => {
-                              const audioElement = e.target;
-                              audioElement.volume = 1.0; // Maximum volume
-
-                              // Force iOS to use loudspeaker
-                              if (audioElement.webkitSetPresentationMode) {
-                                audioElement.webkitSetPresentationMode('inline');
-                              }
-
-                              // Set up Web Audio API for volume boost (iOS-friendly)
-                              try {
-                                // Check if we already set up this audio element
-                                if (!playbackContextsRef.current.has(recording.id)) {
-                                  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                                  const source = ctx.createMediaElementSource(audioElement);
-                                  const gainNode = ctx.createGain();
-
-                                  // 4x volume boost for iOS playback
-                                  gainNode.gain.value = 4.0;
-
-                                  // Connect: audio element -> gain -> speakers
-                                  source.connect(gainNode);
-                                  gainNode.connect(ctx.destination);
-
-                                  // Store for cleanup
-                                  playbackContextsRef.current.set(recording.id, { ctx, gainNode });
-                                }
-                              } catch (err) {
-                                // Fallback to regular playback if Web Audio fails
-                                console.log('Web Audio boost unavailable, using standard playback');
-                              }
-                            }}
-                            onPlay={pausePitchDetection}
-                            onPause={resumePitchDetection}
-                            onEnded={resumePitchDetection}
+                            onPlay={stopMicrophoneForPlayback}
+                            onPause={restartMicrophoneAfterPlayback}
+                            onEnded={restartMicrophoneAfterPlayback}
                             className="w-full mb-3"
                             style={{height: '40px'}}
                           />
