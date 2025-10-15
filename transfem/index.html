@@ -1063,6 +1063,49 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                       {isRecording ? 'Stop Recording' : '🎙️ Record'}
                     </button>
 
+                    {/* DEBUG BUTTON - Test mic stopping */}
+                    <button
+                      onClick={() => {
+                        console.log('🔴 DEBUG: Manual mic stop test');
+                        console.log('micStreamRef.current:', micStreamRef.current);
+                        console.log('pitchDetectionRef.current:', pitchDetectionRef.current);
+                        console.log('sourceRef.current:', sourceRef.current);
+
+                        if (micStreamRef.current) {
+                          const tracks = micStreamRef.current.getTracks();
+                          console.log('Tracks found:', tracks.length);
+                          tracks.forEach((track, i) => {
+                            console.log(`Track ${i}:`, track.label, 'state:', track.readyState);
+                            track.stop();
+                            console.log(`Track ${i} stopped, new state:`, track.readyState);
+                          });
+                          micStreamRef.current = null;
+                          console.log('✅ Mic stream set to null');
+                        } else {
+                          console.log('❌ No mic stream to stop');
+                        }
+
+                        if (pitchDetectionRef.current) {
+                          cancelAnimationFrame(pitchDetectionRef.current);
+                          pitchDetectionRef.current = null;
+                          console.log('✅ Pitch detection cancelled');
+                        }
+
+                        if (sourceRef.current && analyserRef.current) {
+                          try {
+                            sourceRef.current.disconnect(analyserRef.current);
+                            sourceRef.current = null;
+                            console.log('✅ Source disconnected');
+                          } catch (e) {
+                            console.log('⚠️ Disconnect error:', e);
+                          }
+                        }
+                      }}
+                      className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-yellow-600"
+                    >
+                      🔴 DEBUG: Force Stop Mic
+                    </button>
+
                     {lastRecording && (
                       <button
                         onClick={async () => {
