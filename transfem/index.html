@@ -125,9 +125,6 @@
       const [recordings, setRecordings] = useState([]);
       const [lastRecording, setLastRecording] = useState(null);
       const [showRecordingsModal, setShowRecordingsModal] = useState(false);
-      const [recordingFormat, setRecordingFormat] = useState(() => {
-        return localStorage.getItem('recordingFormat') || 'wav';
-      });
       const webAudioRecorderRef = useRef(null);
       const recordingAudioContextRef = useRef(null);
       const audioRefs = useRef({});
@@ -349,8 +346,10 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         detect();
       }, []);
 
-      // Stop microphone completely during playback (like demo does)
+      // Stop microphone completely during playback (exactly like demo)
       const stopMicrophoneForPlayback = useCallback(() => {
+        console.log('Stopping microphone for playback');
+
         // Stop pitch detection
         if (pitchDetectionRef.current) {
           cancelAnimationFrame(pitchDetectionRef.current);
@@ -359,22 +358,32 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
 
         // Stop microphone stream completely (iOS volume fix)
         if (micStreamRef.current) {
-          micStreamRef.current.getTracks().forEach(track => track.stop());
+          micStreamRef.current.getTracks().forEach(track => {
+            console.log('Stopping track:', track.label);
+            track.stop();
+          });
           micStreamRef.current = null;
+        }
+
+        // Suspend audio context to fully release mic
+        if (audioContextRef.current && audioContextRef.current.state === 'running') {
+          audioContextRef.current.suspend();
         }
       }, []);
 
       // Restart microphone after playback
       const restartMicrophoneAfterPlayback = useCallback(async () => {
+        console.log('Restarting microphone after playback, micActive:', micActive);
+
         if (!micActive) return;
 
         try {
-          // Re-initialize microphone
+          // Re-initialize microphone (this will create new stream and restart pitch detection)
           await initAudio();
         } catch (error) {
           console.error('Error restarting microphone:', error);
         }
-      }, [micActive]);
+      }, [micActive, initAudio]);
 
       /* Start/Stop drone */
       const startDrone = useCallback(async () => {
@@ -500,10 +509,10 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
 
           const input = recordingAudioContextRef.current.createMediaStreamSource(micStreamRef.current);
 
-          // Create WebAudioRecorder with selected format
+          // Create WebAudioRecorder with WAV format (universal compatibility)
           const recorder = new WebAudioRecorder(input, {
             workerDir: "../js/",
-            encoding: recordingFormat,
+            encoding: 'wav',
             numChannels: 2, // Stereo like demo
             onEncoderLoading: function(recorder, encoding) {
               console.log("Loading " + encoding + " encoder...");
@@ -522,20 +531,18 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
               blob,
               url,
               duration: null,
-              mimeType: 'audio/' + recordingFormat,
-              encoding: recordingFormat
+              mimeType: 'audio/wav',
+              encoding: 'wav'
             };
 
             setRecordings(prev => [...prev, newRecording]);
             setLastRecording(newRecording);
-            console.log("Encoding complete");
+            console.log("WAV encoding complete");
           };
 
           recorder.setOptions({
             timeLimit: 300, // 5 minutes max
-            encodeAfterRecord: true,
-            ogg: { quality: 0.5 },
-            mp3: { bitRate: 160 }
+            encodeAfterRecord: true
           });
 
           webAudioRecorderRef.current = recorder;
@@ -545,7 +552,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           console.error('Error starting recording:', error);
           alert('Recording failed. Please ensure microphone access is granted and try again.');
         }
-      }, [recordingFormat]);
+      }, []);
 
       const stopRecording = useCallback(() => {
         if (webAudioRecorderRef.current && isRecording) {
@@ -1017,28 +1024,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                     </button>
                   </div>
 
-                  {/* Recording Format Selector */}
-                  <div className="mb-3">
-                    <label className="block text-sm font-semibold mb-1" style={{color: 'var(--brand-grey)'}}>
-                      Recording Format
-                    </label>
-                    <select
-                      value={recordingFormat}
-                      onChange={(e) => {
-                        setRecordingFormat(e.target.value);
-                        localStorage.setItem('recordingFormat', e.target.value);
-                      }}
-                      disabled={isRecording}
-                      className="w-full px-3 py-2 rounded-lg border-2 border-gray-300 text-sm"
-                      style={{backgroundColor: 'white', color: 'var(--brand-grey)'}}
-                    >
-                      <option value="wav">WAV (Waveform Audio) - Universal</option>
-                      <option value="mp3">MP3 (MPEG Audio) - Compressed</option>
-                      <option value="ogg">OGG (Ogg Vorbis) - Open Format</option>
-                    </select>
-                  </div>
-
-                  {/* Recording controls */}
+                  {/* Recording controls (WAV format only) */}
                   <div className="space-y-2">
                     <button
                       onClick={isRecording ? stopRecording : startRecording}
