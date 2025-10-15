@@ -1146,11 +1146,65 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                           console.log('❌ No mic stream to stop');
                         }
 
+                        // NUCLEAR OPTION: Close AudioContext too?
+                        if (audioContextRef.current) {
+                          try {
+                            console.log('⚠️ NUCLEAR: Closing AudioContext...');
+                            audioContextRef.current.close();
+                            audioContextRef.current = null;
+                            console.log('✅ AudioContext closed');
+                          } catch (e) {
+                            console.log('⚠️ AudioContext close error:', e);
+                          }
+                        }
+
                         console.log('🎯 Check Safari address bar - red mic should disappear!');
                       }}
                       className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-yellow-600"
                     >
                       🔴 DEBUG: Force Stop Mic
+                    </button>
+
+                    {/* NUCLEAR DEBUG BUTTON */}
+                    <button
+                      onClick={() => {
+                        console.log('💣 NUCLEAR DEBUG: Close EVERYTHING');
+
+                        // Stop everything
+                        if (webAudioRecorderRef.current) {
+                          webAudioRecorderRef.current = null;
+                        }
+                        if (pitchDetectionRef.current) {
+                          cancelAnimationFrame(pitchDetectionRef.current);
+                          pitchDetectionRef.current = null;
+                        }
+                        if (sourceRef.current) {
+                          try { sourceRef.current.disconnect(); } catch(e) {}
+                          sourceRef.current = null;
+                        }
+                        if (micStreamRef.current) {
+                          micStreamRef.current.getTracks().forEach(t => t.stop());
+                          micStreamRef.current = null;
+                        }
+
+                        // CLOSE AUDIO CONTEXT (might be needed to release mic on iOS)
+                        if (audioContextRef.current) {
+                          audioContextRef.current.close().then(() => {
+                            console.log('✅ AudioContext closed successfully');
+                            audioContextRef.current = null;
+                          }).catch(e => {
+                            console.log('AudioContext close error:', e);
+                          });
+                        }
+
+                        // Turn off mic active
+                        setMicActive(false);
+
+                        console.log('💣 EVERYTHING CLOSED - Check if red mic disappears!');
+                      }}
+                      className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-red-600"
+                    >
+                      💣 NUCLEAR: Close AudioContext
                     </button>
 
                     {lastRecording && (
