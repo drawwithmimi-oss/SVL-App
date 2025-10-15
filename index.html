@@ -245,7 +245,7 @@
     /* Quote section */
     .quote-container {
       max-width: 900px;
-      margin: 20px auto;
+      margin: 10px auto;
       padding: 0 20px;
     }
 
@@ -437,18 +437,6 @@
           {/* Hero Section */}
           <div className="hero">
             <h1>Voice Training Companion</h1>
-            {quote && (
-              <p style={{
-                fontSize: '14px',
-                fontStyle: 'italic',
-                opacity: '0.8',
-                margin: '15px auto',
-                maxWidth: '500px',
-                lineHeight: '1.5'
-              }}>
-                {quote}
-              </p>
-            )}
             <img src="./assets/Visuals/icones/Logo/Logo move .gif" alt="Voice Training Companion Logo" className="hero-logo" />
           </div>
 
@@ -456,6 +444,15 @@
           <div className="wave-wrapper">
             <div className="wave"></div>
           </div>
+
+          {/* Quote Section */}
+          {quote && (
+            <div className="quote-container">
+              <div className="quote-box">
+                <div className="quote-text">{quote}</div>
+              </div>
+            </div>
+          )}
 
           {/* Categories Grid */}
           <main>
