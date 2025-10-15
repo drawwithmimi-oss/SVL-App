@@ -607,6 +607,17 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         };
       }, [initAudio]);
 
+      /* Stop mic when recordings modal opens (for loud playback on iOS) */
+      useEffect(() => {
+        if (showRecordingsModal) {
+          console.log('Recordings modal opened - stopping microphone');
+          stopMicrophoneForPlayback();
+        } else if (micActive && !micStreamRef.current) {
+          console.log('Recordings modal closed - restarting microphone');
+          restartMicrophoneAfterPlayback();
+        }
+      }, [showRecordingsModal, micActive]);
+
       /* Live updates while playing */
       useEffect(() => {
         if (gainNodeRef.current) {
@@ -1041,9 +1052,14 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
 
                     {lastRecording && (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
+                          // Stop mic BEFORE starting playback (critical for iOS volume)
+                          stopMicrophoneForPlayback();
+
+                          // Wait a moment for mic to fully release
+                          await new Promise(resolve => setTimeout(resolve, 100));
+
                           const audio = new Audio(lastRecording.url);
-                          audio.onplay = stopMicrophoneForPlayback;
                           audio.onpause = restartMicrophoneAfterPlayback;
                           audio.onended = restartMicrophoneAfterPlayback;
                           audio.play();
@@ -1127,9 +1143,6 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                             playsinline
                             preload="auto"
                             src={recording.url}
-                            onPlay={stopMicrophoneForPlayback}
-                            onPause={restartMicrophoneAfterPlayback}
-                            onEnded={restartMicrophoneAfterPlayback}
                             className="w-full mb-3"
                             style={{height: '40px'}}
                           />
