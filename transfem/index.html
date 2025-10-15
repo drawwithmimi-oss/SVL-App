@@ -346,54 +346,73 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         detect();
       }, []);
 
-      // Stop microphone completely during playback (exactly like demo)
+      // Stop microphone completely during playback - DEMO'S EXACT METHOD!
       const stopMicrophoneForPlayback = useCallback(() => {
-        console.log('Stopping microphone for playback');
+        console.log('🛑 Stopping microphone for playback - DEMO METHOD');
 
-        // CRITICAL: Stop and clear WebAudioRecorder FIRST!
-        // Recorder holds internal reference to sourceRef that keeps mic "active"!
-        if (webAudioRecorderRef.current) {
+        // Step 1: Stop microphone track FIRST (like demo line 114)
+        // This is THE critical step that releases the mic on iOS!
+        if (micStreamRef.current) {
           try {
-            if (isRecording) {
-              console.log('⚠️ Recording active during playback - stopping it!');
-              webAudioRecorderRef.current.finishRecording();
-              setIsRecording(false);
+            const audioTracks = micStreamRef.current.getAudioTracks();
+            console.log(`🎤 Found ${audioTracks.length} audio tracks`);
+
+            if (audioTracks.length > 0) {
+              console.log(`🎤 Stopping track: ${audioTracks[0].label}`);
+              audioTracks[0].stop();  // DEMO WAY: .getAudioTracks()[0].stop()
+              console.log('✅ Audio track stopped!');
             }
-            console.log('✅ Clearing WebAudioRecorder reference');
-            webAudioRecorderRef.current = null;  // CRITICAL: Release internal reference!
+
+            micStreamRef.current = null;
+            console.log('✅ Mic stream cleared');
           } catch (e) {
-            console.log('WebAudioRecorder cleanup error:', e);
+            console.error('Error stopping audio track:', e);
           }
+        } else {
+          console.log('⚠️ No mic stream to stop');
         }
 
-        // Stop pitch detection RAF loop
+        // Step 2: Stop pitch detection
         if (pitchDetectionRef.current) {
           cancelAnimationFrame(pitchDetectionRef.current);
           pitchDetectionRef.current = null;
+          console.log('✅ Pitch detection stopped');
         }
 
-        // Disconnect THE SINGLE source from analyser (fully release audio graph)
-        if (sourceRef.current && analyserRef.current) {
+        // Step 3: Disconnect and clear source node
+        if (sourceRef.current) {
           try {
             sourceRef.current.disconnect();
-            console.log('✅ Source fully disconnected from ALL outputs');
+            sourceRef.current = null;
+            console.log('✅ Source node disconnected and cleared');
           } catch (e) {
-            console.log('Source already disconnected:', e);
+            console.log('Source disconnect error:', e);
           }
-          sourceRef.current = null;
         }
 
-        // Stop microphone stream completely (iOS volume fix - matches demo behavior)
-        if (micStreamRef.current) {
-          micStreamRef.current.getTracks().forEach(track => {
-            console.log('Stopping track:', track.label);
-            track.stop();
-          });
-          micStreamRef.current = null;
+        // Step 4: Clear WebAudioRecorder if exists
+        if (webAudioRecorderRef.current) {
+          try {
+            if (isRecording) {
+              webAudioRecorderRef.current.finishRecording();
+              setIsRecording(false);
+            }
+            webAudioRecorderRef.current = null;
+            console.log('✅ WebAudioRecorder cleared');
+          } catch (e) {
+            console.log('Recorder cleanup error:', e);
+          }
         }
 
-        // NOTE: Demo does NOT suspend/close AudioContext - leaving it running is correct!
-        // iOS interprets suspend() as "interrupted audio" which triggers low volume mode
+        // Step 5: Clear analyser
+        if (analyserRef.current) {
+          analyserRef.current = null;
+          console.log('✅ Analyser cleared');
+        }
+
+        console.log('🎯 Microphone fully stopped - check for red indicator!');
+
+        // NOTE: We keep AudioContext alive (demo does this too)
       }, [isRecording]);
 
       // Restart microphone after playback
