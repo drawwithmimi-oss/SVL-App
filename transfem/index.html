@@ -350,6 +350,22 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
       const stopMicrophoneForPlayback = useCallback(() => {
         console.log('Stopping microphone for playback');
 
+        // CRITICAL: Stop and clear WebAudioRecorder FIRST!
+        // Recorder holds internal reference to sourceRef that keeps mic "active"!
+        if (webAudioRecorderRef.current) {
+          try {
+            if (isRecording) {
+              console.log('⚠️ Recording active during playback - stopping it!');
+              webAudioRecorderRef.current.finishRecording();
+              setIsRecording(false);
+            }
+            console.log('✅ Clearing WebAudioRecorder reference');
+            webAudioRecorderRef.current = null;  // CRITICAL: Release internal reference!
+          } catch (e) {
+            console.log('WebAudioRecorder cleanup error:', e);
+          }
+        }
+
         // Stop pitch detection RAF loop
         if (pitchDetectionRef.current) {
           cancelAnimationFrame(pitchDetectionRef.current);
@@ -378,7 +394,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
 
         // NOTE: Demo does NOT suspend/close AudioContext - leaving it running is correct!
         // iOS interprets suspend() as "interrupted audio" which triggers low volume mode
-      }, []);
+      }, [isRecording]);
 
       // Restart microphone after playback
       const restartMicrophoneAfterPlayback = useCallback(async () => {
@@ -574,9 +590,16 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           webAudioRecorderRef.current.finishRecording();
           setIsRecording(false);
 
+          // CRITICAL: Clear webAudioRecorderRef immediately!
+          // Holding the reference keeps internal connection to sourceRef alive!
+          setTimeout(() => {
+            // Small delay to let finishRecording() complete encoding
+            webAudioRecorderRef.current = null;
+            console.log('✅ Recording stopped, WebAudioRecorder cleared');
+          }, 100);
+
           // Note: We DON'T disconnect sourceRef here - it's still being used for pitch detection!
           // sourceRef stays connected to analyser for continuous pitch detection
-          // This is the key difference from the demo (which doesn't have pitch detection)
           console.log('✅ Recording stopped, sourceRef stays connected for pitch detection');
 
           // Note: We keep audioContext alive (single context like demo)
@@ -1078,19 +1101,23 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                         console.log('micStreamRef.current:', micStreamRef.current);
                         console.log('pitchDetectionRef.current:', pitchDetectionRef.current);
                         console.log('sourceRef.current:', sourceRef.current);
+                        console.log('webAudioRecorderRef.current:', webAudioRecorderRef.current);
 
-                        if (micStreamRef.current) {
-                          const tracks = micStreamRef.current.getTracks();
-                          console.log('Tracks found:', tracks.length);
-                          tracks.forEach((track, i) => {
-                            console.log(`Track ${i}:`, track.label, 'state:', track.readyState);
-                            track.stop();
-                            console.log(`Track ${i} stopped, new state:`, track.readyState);
-                          });
-                          micStreamRef.current = null;
-                          console.log('✅ Mic stream set to null');
+                        // CRITICAL: Clear WebAudioRecorder FIRST!
+                        if (webAudioRecorderRef.current) {
+                          console.log('⚠️ WebAudioRecorder exists! Clearing it...');
+                          try {
+                            if (isRecording) {
+                              webAudioRecorderRef.current.finishRecording();
+                              console.log('Recording stopped');
+                            }
+                            webAudioRecorderRef.current = null;
+                            console.log('✅ WebAudioRecorder cleared');
+                          } catch (e) {
+                            console.log('⚠️ Recorder error:', e);
+                          }
                         } else {
-                          console.log('❌ No mic stream to stop');
+                          console.log('✅ No WebAudioRecorder to clear');
                         }
 
                         if (pitchDetectionRef.current) {
@@ -1108,6 +1135,22 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                             console.log('⚠️ Disconnect error:', e);
                           }
                         }
+
+                        if (micStreamRef.current) {
+                          const tracks = micStreamRef.current.getTracks();
+                          console.log('Tracks found:', tracks.length);
+                          tracks.forEach((track, i) => {
+                            console.log(`Track ${i}:`, track.label, 'state:', track.readyState);
+                            track.stop();
+                            console.log(`Track ${i} stopped, new state:`, track.readyState);
+                          });
+                          micStreamRef.current = null;
+                          console.log('✅ Mic stream set to null');
+                        } else {
+                          console.log('❌ No mic stream to stop');
+                        }
+
+                        console.log('🎯 Check Safari address bar - red mic should disappear!');
                       }}
                       className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-yellow-600"
                     >
