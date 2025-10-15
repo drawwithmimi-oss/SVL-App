@@ -114,7 +114,6 @@
       const [micPermission, setMicPermission] = useState('pending');
       const [audioInitialized, setAudioInitialized] = useState(false);
       const [micActive, setMicActive] = useState(false);
-      const [pitchDetectionEnabled, setPitchDetectionEnabled] = useState(false); // v2.2: Optional pitch detection
       const [showBubble, setShowBubble] = useState(true); // Auto-show monitor
       const [bubbleExpanded, setBubbleExpanded] = useState(false);
       const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -274,7 +273,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
       ];
 
-      /* Init mic + analyser FOR PITCH DETECTION ONLY (v2.2) */
+      /* Init mic + analyser for pitch detection (v2.3) */
       const initAudio = useCallback(async () => {
         try {
           if (!audioContextRef.current) {
@@ -303,9 +302,9 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           setAudioInitialized(true);
           setMicActive(true);
 
-          // Start pitch detection immediately
+          // Start pitch detection
           startPitchDetection();
-          console.log('✅ Pitch detection started');
+          console.log('✅ Pitch detection started - will pause during playback');
         } catch (err) {
           console.error('Microphone error:', err);
           if (err.name === 'NotAllowedError') {
@@ -415,20 +414,15 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         // NOTE: We keep AudioContext alive (demo does this too)
       }, [isRecording]);
 
-      // Restart microphone after playback (v2.2: Only if pitch detection was enabled)
+      // Restart microphone after playback (v2.3: Always restart for pitch detection)
       const restartMicrophoneAfterPlayback = useCallback(async () => {
-        if (!pitchDetectionEnabled) {
-          console.log('⚠️ Pitch detection disabled - not restarting mic');
-          return;
-        }
-
         console.log('🔄 Restarting microphone for pitch detection...');
         try {
           await initAudio();
         } catch (error) {
           console.error('Error restarting microphone:', error);
         }
-      }, [pitchDetectionEnabled, initAudio]);
+      }, [initAudio]);
 
       /* Start/Stop drone */
       const startDrone = useCallback(async () => {
@@ -520,50 +514,6 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
         setMicActive(true);
       }, [audioInitialized, initAudio]);
-
-      /* Toggle pitch detection on/off (v2.2) */
-      const togglePitchDetection = useCallback(async () => {
-        if (!pitchDetectionEnabled) {
-          // Turn ON pitch detection
-          console.log('🎵 Enabling pitch detection...');
-          if (!audioInitialized) {
-            await initAudio(); // This will start pitch detection
-          } else if (!micActive) {
-            await activateMicrophone();
-            startPitchDetection();
-          }
-          setPitchDetectionEnabled(true);
-        } else {
-          // Turn OFF pitch detection
-          console.log('🔇 Disabling pitch detection...');
-
-          // Stop pitch detection loop
-          if (pitchDetectionRef.current) {
-            cancelAnimationFrame(pitchDetectionRef.current);
-            pitchDetectionRef.current = null;
-          }
-
-          // Disconnect and stop microphone
-          if (sourceRef.current) {
-            try {
-              sourceRef.current.disconnect();
-              sourceRef.current = null;
-            } catch (e) {
-              console.log('Disconnect error:', e);
-            }
-          }
-
-          if (micStreamRef.current) {
-            micStreamRef.current.getAudioTracks()[0].stop();
-            micStreamRef.current = null;
-            console.log('✅ Microphone released');
-          }
-
-          setMicActive(false);
-          setPitchDetectionEnabled(false);
-          setCurrentPitch(0);
-        }
-      }, [pitchDetectionEnabled, audioInitialized, micActive, initAudio, activateMicrophone]);
 
       const togglePitchMonitor = useCallback(async () => {
         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
@@ -700,9 +650,9 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         a.click();
       }, []);
 
-      /* Component mount - NO automatic mic access (v2.2 change) */
+      /* Component mount - Start pitch detection automatically (v2.3) */
       useEffect(() => {
-        // v2.2: DO NOT call initAudio() - user must enable pitch detection manually
+        initAudio(); // Start pitch detection on mount (will pause during playback)
 
         // Default: enable boost on small screens
         try {
@@ -711,8 +661,6 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           }
         } catch {}
 
-        setAudioInitialized(false); // Start with audio not initialized
-
         return () => {
           if (pitchDetectionRef.current) cancelAnimationFrame(pitchDetectionRef.current);
           if (oscillatorRef.current) { try { oscillatorRef.current.stop(); } catch {} }
@@ -720,7 +668,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           // NOTE: Keep audioContext alive like demo does - don't close it
           // iOS needs the context to remain active for proper audio routing
         };
-      }, []);
+      }, [initAudio]);
 
       /* Stop mic when recordings modal opens (for loud playback on iOS) */
       useEffect(() => {
@@ -1154,23 +1102,6 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                     >
                       {isDronePlaying ? 'Mute Drone' : 'Play Drone'}
                     </button>
-                  </div>
-
-                  {/* Pitch Detection Toggle (v2.2) */}
-                  <div className="mb-3">
-                    <button
-                      onClick={togglePitchDetection}
-                      className={`w-full py-2 rounded-lg text-sm text-white font-semibold ${
-                        pitchDetectionEnabled ? 'bg-orange-500' : 'bg-blue-500'
-                      }`}
-                    >
-                      {pitchDetectionEnabled ? '🔇 Turn OFF Pitch Detection' : '🎵 Turn ON Pitch Detection'}
-                    </button>
-                    {pitchDetectionEnabled && (
-                      <p className="text-xs text-gray-600 mt-1 text-center">
-                        Mic is active for pitch detection
-                      </p>
-                    )}
                   </div>
 
                   {/* Recording controls (WAV format only) */}
