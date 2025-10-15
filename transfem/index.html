@@ -114,6 +114,7 @@
       const [micPermission, setMicPermission] = useState('pending');
       const [audioInitialized, setAudioInitialized] = useState(false);
       const [micActive, setMicActive] = useState(false);
+      const [pitchDetectionEnabled, setPitchDetectionEnabled] = useState(false); // v2.2: Optional pitch detection
       const [showBubble, setShowBubble] = useState(true); // Auto-show monitor
       const [bubbleExpanded, setBubbleExpanded] = useState(false);
       const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -273,12 +274,46 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
       ];
 
-      /* Init mic + analyser - REMOVED (mic now only active during recording) */
+      /* Init mic + analyser FOR PITCH DETECTION ONLY (v2.2) */
       const initAudio = useCallback(async () => {
-        console.log('⚠️ initAudio() called but DISABLED - mic only activates during recording');
-        // OLD APPROACH: Request mic access immediately and keep it active
-        // NEW APPROACH: Only request mic when user clicks Record button (in startRecording)
-        setAudioInitialized(true);
+        try {
+          if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+          }
+
+          if (audioContextRef.current.state === 'suspended') {
+            await audioContextRef.current.resume();
+          }
+
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          });
+          micStreamRef.current = stream;
+          setMicPermission('granted');
+
+          sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
+          analyserRef.current = audioContextRef.current.createAnalyser();
+          analyserRef.current.fftSize = 2048;
+          sourceRef.current.connect(analyserRef.current);
+
+          setAudioInitialized(true);
+          setMicActive(true);
+
+          // Start pitch detection immediately
+          startPitchDetection();
+          console.log('✅ Pitch detection started');
+        } catch (err) {
+          console.error('Microphone error:', err);
+          if (err.name === 'NotAllowedError') {
+            setMicPermission('denied');
+          } else {
+            setMicPermission('denied');
+          }
+        }
       }, []);
 
       /* Pitch detection (simple dominant-bin) */
@@ -380,21 +415,20 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         // NOTE: We keep AudioContext alive (demo does this too)
       }, [isRecording]);
 
-      // Restart microphone after playback - DISABLED FOR TESTING
+      // Restart microphone after playback (v2.2: Only if pitch detection was enabled)
       const restartMicrophoneAfterPlayback = useCallback(async () => {
-        console.log('⚠️ restartMicrophoneAfterPlayback called - DISABLED FOR TESTING');
-        console.log('Mic will NOT restart automatically - user must reactivate manually');
+        if (!pitchDetectionEnabled) {
+          console.log('⚠️ Pitch detection disabled - not restarting mic');
+          return;
+        }
 
-        // DISABLED: Do NOT restart mic automatically
-        // This allows us to test if mic stays off during playback
-
-        // if (!micActive) return;
-        // try {
-        //   await initAudio();
-        // } catch (error) {
-        //   console.error('Error restarting microphone:', error);
-        // }
-      }, [micActive, initAudio]);
+        console.log('🔄 Restarting microphone for pitch detection...');
+        try {
+          await initAudio();
+        } catch (error) {
+          console.error('Error restarting microphone:', error);
+        }
+      }, [pitchDetectionEnabled, initAudio]);
 
       /* Start/Stop drone */
       const startDrone = useCallback(async () => {
@@ -486,6 +520,50 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
         setMicActive(true);
       }, [audioInitialized, initAudio]);
+
+      /* Toggle pitch detection on/off (v2.2) */
+      const togglePitchDetection = useCallback(async () => {
+        if (!pitchDetectionEnabled) {
+          // Turn ON pitch detection
+          console.log('🎵 Enabling pitch detection...');
+          if (!audioInitialized) {
+            await initAudio(); // This will start pitch detection
+          } else if (!micActive) {
+            await activateMicrophone();
+            startPitchDetection();
+          }
+          setPitchDetectionEnabled(true);
+        } else {
+          // Turn OFF pitch detection
+          console.log('🔇 Disabling pitch detection...');
+
+          // Stop pitch detection loop
+          if (pitchDetectionRef.current) {
+            cancelAnimationFrame(pitchDetectionRef.current);
+            pitchDetectionRef.current = null;
+          }
+
+          // Disconnect and stop microphone
+          if (sourceRef.current) {
+            try {
+              sourceRef.current.disconnect();
+              sourceRef.current = null;
+            } catch (e) {
+              console.log('Disconnect error:', e);
+            }
+          }
+
+          if (micStreamRef.current) {
+            micStreamRef.current.getAudioTracks()[0].stop();
+            micStreamRef.current = null;
+            console.log('✅ Microphone released');
+          }
+
+          setMicActive(false);
+          setPitchDetectionEnabled(false);
+          setCurrentPitch(0);
+        }
+      }, [pitchDetectionEnabled, audioInitialized, micActive, initAudio, activateMicrophone]);
 
       const togglePitchMonitor = useCallback(async () => {
         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
@@ -622,15 +700,19 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         a.click();
       }, []);
 
-      /* Component mount - NO automatic mic access (v2.1 change) */
+      /* Component mount - NO automatic mic access (v2.2 change) */
       useEffect(() => {
-        initAudio(); // Now just sets audioInitialized flag, doesn't request mic
+        // v2.2: DO NOT call initAudio() - user must enable pitch detection manually
+
         // Default: enable boost on small screens
         try {
           if (window.matchMedia && window.matchMedia('(max-width: 480px)').matches) {
             setPhoneBoost(true);
           }
         } catch {}
+
+        setAudioInitialized(false); // Start with audio not initialized
+
         return () => {
           if (pitchDetectionRef.current) cancelAnimationFrame(pitchDetectionRef.current);
           if (oscillatorRef.current) { try { oscillatorRef.current.stop(); } catch {} }
@@ -638,7 +720,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           // NOTE: Keep audioContext alive like demo does - don't close it
           // iOS needs the context to remain active for proper audio routing
         };
-      }, [initAudio]);
+      }, []);
 
       /* Stop mic when recordings modal opens (for loud playback on iOS) */
       useEffect(() => {
@@ -1074,151 +1156,33 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
                     </button>
                   </div>
 
+                  {/* Pitch Detection Toggle (v2.2) */}
+                  <div className="mb-3">
+                    <button
+                      onClick={togglePitchDetection}
+                      className={`w-full py-2 rounded-lg text-sm text-white font-semibold ${
+                        pitchDetectionEnabled ? 'bg-orange-500' : 'bg-blue-500'
+                      }`}
+                    >
+                      {pitchDetectionEnabled ? '🔇 Turn OFF Pitch Detection' : '🎵 Turn ON Pitch Detection'}
+                    </button>
+                    {pitchDetectionEnabled && (
+                      <p className="text-xs text-gray-600 mt-1 text-center">
+                        Mic is active for pitch detection
+                      </p>
+                    )}
+                  </div>
+
                   {/* Recording controls (WAV format only) */}
                   <div className="space-y-2">
                     <button
                       onClick={isRecording ? stopRecording : startRecording}
-                      disabled={!micActive}
                       className={`w-full py-2 rounded-lg text-sm text-white font-semibold flex items-center justify-center gap-2 ${
-                        !micActive ? 'bg-gray-300 cursor-not-allowed' :
                         isRecording ? 'bg-red-600' : 'bg-purple-600'
                       }`}
-                      title={!micActive ? 'Activate microphone first' : ''}
                     >
                       {isRecording && <span className="inline-block w-3 h-3 bg-white rounded-full animate-pulse"></span>}
                       {isRecording ? 'Stop Recording' : '🎙️ Record'}
-                    </button>
-
-                    {/* DEBUG BUTTON - Test mic stopping */}
-                    <button
-                      onClick={() => {
-                        console.log('🔴 DEBUG: Manual mic stop test');
-                        console.log('micStreamRef.current:', micStreamRef.current);
-                        console.log('pitchDetectionRef.current:', pitchDetectionRef.current);
-                        console.log('sourceRef.current:', sourceRef.current);
-                        console.log('webAudioRecorderRef.current:', webAudioRecorderRef.current);
-
-                        // CRITICAL: Clear WebAudioRecorder FIRST!
-                        if (webAudioRecorderRef.current) {
-                          console.log('⚠️ WebAudioRecorder exists! Clearing it...');
-                          try {
-                            if (isRecording) {
-                              webAudioRecorderRef.current.finishRecording();
-                              console.log('Recording stopped');
-                            }
-                            webAudioRecorderRef.current = null;
-                            console.log('✅ WebAudioRecorder cleared');
-                          } catch (e) {
-                            console.log('⚠️ Recorder error:', e);
-                          }
-                        } else {
-                          console.log('✅ No WebAudioRecorder to clear');
-                        }
-
-                        if (pitchDetectionRef.current) {
-                          cancelAnimationFrame(pitchDetectionRef.current);
-                          pitchDetectionRef.current = null;
-                          console.log('✅ Pitch detection cancelled');
-                        }
-
-                        if (sourceRef.current) {
-                          try {
-                            sourceRef.current.disconnect();
-                            sourceRef.current = null;
-                            console.log('✅ Single source fully disconnected');
-                          } catch (e) {
-                            console.log('⚠️ Disconnect error:', e);
-                          }
-                        }
-
-                        if (micStreamRef.current) {
-                          console.log('📍 micStreamRef exists:', micStreamRef.current);
-                          console.log('📍 Stream active?', micStreamRef.current.active);
-                          console.log('📍 Stream id:', micStreamRef.current.id);
-
-                          const audioTracks = micStreamRef.current.getAudioTracks();
-                          console.log('🎤 Audio tracks found:', audioTracks.length);
-
-                          audioTracks.forEach((track, i) => {
-                            console.log(`🎤 Track ${i}:`, track.label);
-                            console.log(`   - kind:`, track.kind);
-                            console.log(`   - enabled:`, track.enabled);
-                            console.log(`   - readyState:`, track.readyState);
-                            console.log(`   - muted:`, track.muted);
-
-                            console.log(`   → Calling track.stop()...`);
-                            track.stop();
-
-                            console.log(`   - NEW readyState:`, track.readyState);
-                            console.log(`   - NEW enabled:`, track.enabled);
-                          });
-
-                          console.log('📍 After stopping, stream active?', micStreamRef.current.active);
-                          micStreamRef.current = null;
-                          console.log('✅ Mic stream set to null');
-                        } else {
-                          console.log('❌ No mic stream to stop');
-                        }
-
-                        // NUCLEAR OPTION: Close AudioContext too?
-                        if (audioContextRef.current) {
-                          try {
-                            console.log('⚠️ NUCLEAR: Closing AudioContext...');
-                            audioContextRef.current.close();
-                            audioContextRef.current = null;
-                            console.log('✅ AudioContext closed');
-                          } catch (e) {
-                            console.log('⚠️ AudioContext close error:', e);
-                          }
-                        }
-
-                        console.log('🎯 Check Safari address bar - red mic should disappear!');
-                      }}
-                      className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-yellow-600"
-                    >
-                      🔴 DEBUG: Force Stop Mic
-                    </button>
-
-                    {/* NUCLEAR DEBUG BUTTON */}
-                    <button
-                      onClick={() => {
-                        console.log('💣 NUCLEAR DEBUG: Close EVERYTHING');
-
-                        // Stop everything
-                        if (webAudioRecorderRef.current) {
-                          webAudioRecorderRef.current = null;
-                        }
-                        if (pitchDetectionRef.current) {
-                          cancelAnimationFrame(pitchDetectionRef.current);
-                          pitchDetectionRef.current = null;
-                        }
-                        if (sourceRef.current) {
-                          try { sourceRef.current.disconnect(); } catch(e) {}
-                          sourceRef.current = null;
-                        }
-                        if (micStreamRef.current) {
-                          micStreamRef.current.getTracks().forEach(t => t.stop());
-                          micStreamRef.current = null;
-                        }
-
-                        // CLOSE AUDIO CONTEXT (might be needed to release mic on iOS)
-                        if (audioContextRef.current) {
-                          audioContextRef.current.close().then(() => {
-                            console.log('✅ AudioContext closed successfully');
-                            audioContextRef.current = null;
-                          }).catch(e => {
-                            console.log('AudioContext close error:', e);
-                          });
-                        }
-
-                        // Turn off mic active
-                        setMicActive(false);
-
-                        console.log('💣 EVERYTHING CLOSED - Check if red mic disappears!');
-                      }}
-                      className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-red-600"
-                    >
-                      💣 NUCLEAR: Close AudioContext
                     </button>
 
                     {lastRecording && (
