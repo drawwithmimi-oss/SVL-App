@@ -545,30 +545,34 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
         }
       }, [selectedNote]);
 
-      // Recording functions using WebAudioRecorder
-      const startRecording = useCallback(async () => {
-        if (!micStreamRef.current) {
-          console.error('No microphone stream available');
-          return;
-        }
+      // COMPLETE REWRITE - Recording functions using DEMO'S EXACT APPROACH
+      const startRecording = useCallback(() => {
+        console.log("🎙️ startRecording() called - DEMO METHOD");
 
-        try {
-          // Use existing AudioContext for recording (single context like demo)
-          if (!audioContextRef.current || !sourceRef.current) {
-            console.error('No audio context or source available');
-            return;
+        // DEMO WAY: Get microphone access RIGHT NOW (not beforehand!)
+        const constraints = { audio: true, video: false };
+
+        navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
+          console.log("✅ getUserMedia() success, stream created");
+
+          // DEMO WAY: Create AudioContext AFTER getUserMedia (iOS requirement)
+          if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            console.log("✅ AudioContext created");
           }
 
-          // CRITICAL FIX: Use the SAME source node for recording!
-          // Creating a second source from the same stream keeps mic "active"
-          // We already have sourceRef from initAudio() - reuse it!
-          console.log('Using existing sourceRef for recording (single source approach)');
+          // Store stream for later (to stop it)
+          micStreamRef.current = stream;
 
-          // Create WebAudioRecorder with WAV format (universal compatibility)
-          const recorder = new WebAudioRecorder(sourceRef.current, {
+          // Create MediaStreamSource from the stream
+          const input = audioContextRef.current.createMediaStreamSource(stream);
+          console.log("✅ MediaStreamSource created");
+
+          // Create WebAudioRecorder
+          const recorder = new WebAudioRecorder(input, {
             workerDir: "../js/",
             encoding: 'wav',
-            numChannels: 2, // Stereo like demo
+            numChannels: 2,
             onEncoderLoading: function(recorder, encoding) {
               console.log("Loading " + encoding + " encoder...");
             },
@@ -578,6 +582,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           });
 
           recorder.onComplete = function(recorder, blob) {
+            console.log("✅ Encoding complete");
             const url = URL.createObjectURL(blob);
             const timestamp = new Date().toLocaleString();
             const newRecording = {
@@ -592,38 +597,46 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
 
             setRecordings(prev => [...prev, newRecording]);
             setLastRecording(newRecording);
-            console.log("WAV encoding complete");
           };
 
           recorder.setOptions({
-            timeLimit: 300, // 5 minutes max
+            timeLimit: 300,
             encodeAfterRecord: true
           });
 
           webAudioRecorderRef.current = recorder;
           recorder.startRecording();
           setIsRecording(true);
-        } catch (error) {
-          console.error('Error starting recording:', error);
-          alert('Recording failed. Please ensure microphone access is granted and try again.');
-        }
+          console.log("✅ Recording started");
+
+        }).catch(function(err) {
+          console.error('getUserMedia() error:', err);
+          alert('Microphone access denied or not available');
+        });
+
       }, []);
 
       const stopRecording = useCallback(() => {
-        if (webAudioRecorderRef.current && isRecording) {
-          webAudioRecorderRef.current.finishRecording();
-          setIsRecording(false);
+        console.log("🛑 stopRecording() called - DEMO METHOD");
 
-          // Note: We DON'T clear webAudioRecorderRef here!
-          // The onComplete callback needs it to finish encoding.
-          // We'll clear it in stopMicrophoneForPlayback() when needed for playback.
-
-          // Note: We DON'T disconnect sourceRef here - it's still being used for pitch detection!
-          // sourceRef stays connected to analyser for continuous pitch detection
-          console.log('✅ Recording stopped, sourceRef stays connected for pitch detection');
-
-          // Note: We keep audioContext alive (single context like demo)
+        if (!webAudioRecorderRef.current || !isRecording) {
+          console.log("⚠️ Nothing to stop");
+          return;
         }
+
+        // DEMO WAY: Stop microphone access FIRST! (Line 114 of demo)
+        if (micStreamRef.current) {
+          console.log("🎤 Stopping microphone track...");
+          micStreamRef.current.getAudioTracks()[0].stop();
+          micStreamRef.current = null;
+          console.log("✅ Microphone track stopped - RED MIC SHOULD DISAPPEAR!");
+        }
+
+        // Then finish the recording
+        webAudioRecorderRef.current.finishRecording();
+        setIsRecording(false);
+        console.log("✅ Recording stopped");
+
       }, [isRecording]);
 
       const deleteRecording = useCallback((id) => {
