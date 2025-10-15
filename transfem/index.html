@@ -356,7 +356,7 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           pitchDetectionRef.current = null;
         }
 
-        // Stop microphone stream completely (iOS volume fix)
+        // Stop microphone stream completely (iOS volume fix - matches demo behavior)
         if (micStreamRef.current) {
           micStreamRef.current.getTracks().forEach(track => {
             console.log('Stopping track:', track.label);
@@ -365,10 +365,8 @@ Oh! I have something in my eye, can you help me? (pointing) Looking, looking, lo
           micStreamRef.current = null;
         }
 
-        // Suspend audio context to fully release mic
-        if (audioContextRef.current && audioContextRef.current.state === 'running') {
-          audioContextRef.current.suspend();
-        }
+        // NOTE: Demo does NOT suspend/close AudioContext - leaving it running is correct!
+        // iOS interprets suspend() as "interrupted audio" which triggers low volume mode
       }, []);
 
       // Restart microphone after playback
