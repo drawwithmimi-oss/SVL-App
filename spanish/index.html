@@ -21,6 +21,12 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- WebAudioRecorder.js Library -->
+  <script src="../js/WebAudioRecorder.min.js"></script>
+
+  <!-- Voice Audio Core - Shared audio engine (v2.6) -->
+  <script src="../js/voice-audio-core.js"></script>
+
   <!-- Averia Serif Libre Font -->
   <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
 
@@ -73,6 +79,10 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-10px); }
     }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
     .pitch-indicator { transition: all 0.3s ease; }
 
     /* Prevent accidental selection */
@@ -101,26 +111,50 @@
     const { useState, useRef, useEffect, useCallback } = React;
 
     function VoiceTrainingReader() {
-      const [isDronePlaying, setIsDronePlaying] = useState(false);
-      const [selectedNote, setSelectedNote] = useState('C4');
-      const [currentPitch, setCurrentPitch] = useState(0);
-      const [micPermission, setMicPermission] = useState('pending');
-      const [audioInitialized, setAudioInitialized] = useState(false);
-      const [micActive, setMicActive] = useState(false);
+      // UI-only state (not audio-related)
       const [showBubble, setShowBubble] = useState(true); // Auto-show monitor
       const [bubbleExpanded, setBubbleExpanded] = useState(false);
       const [showSettingsModal, setShowSettingsModal] = useState(false);
       const [selectedReading, setSelectedReading] = useState(null);
       const [fontSize, setFontSize] = useState('large');
-
-      // Recording state
-      const [isRecording, setIsRecording] = useState(false);
-      const [recordings, setRecordings] = useState([]);
-      const [lastRecording, setLastRecording] = useState(null);
       const [showRecordingsModal, setShowRecordingsModal] = useState(false);
-      const mediaRecorderRef = useRef(null);
-      const recordingChunksRef = useRef([]);
-      const audioRefs = useRef({});
+
+      // Use shared audio engine (v2.6)
+      const audio = useVoiceAudio(showRecordingsModal);
+
+      // Destructure audio API for convenience
+      const {
+        isDronePlaying,
+        selectedNote,
+        currentPitch,
+        micPermission,
+        audioInitialized,
+        micActive,
+        isRecording,
+        recordings,
+        lastRecording,
+        volumePct,
+        timbre,
+        softenHighs,
+        phoneBoost,
+        setVolumePct,
+        setTimbre,
+        setSoftenHighs,
+        setPhoneBoost,
+        setSelectedNote,
+        activateMicrophone,
+        togglePitchMonitor,
+        startDrone,
+        stopDrone,
+        adjustNote,
+        startRecording,
+        stopRecording,
+        deleteRecording,
+        downloadRecording,
+        audioRefs,
+        notes,
+        baseGain
+      } = audio;
 
       /* Check URL params on load to auto-select exercises */
       useEffect(() => {
@@ -132,35 +166,6 @@
           }
         }
       }, []);
-
-      /* Volume 0–200% of safe base gain (0.2) */
-      const [volumePct, setVolumePct] = useState(100);
-      const baseGain = 0.2;
-
-      /* NEW: timbre + gentle loudness helpers */
-      const [timbre, setTimbre] = useState('sine');      // sine, triangle, sawtooth, square
-      const [softenHighs, setSoftenHighs] = useState(true); // lowpass to avoid "metallic"
-      const [phoneBoost, setPhoneBoost] = useState(false);  // EQ + compressor for phones
-
-      const audioContextRef = useRef(null);
-      const oscillatorRef   = useRef(null);
-      const gainNodeRef     = useRef(null);
-      const analyserRef     = useRef(null);
-      const micStreamRef    = useRef(null);
-      const pitchDetectionRef = useRef(null);
-
-      /* NEW: processing nodes so we can tweak live */
-      const lowpassRef   = useRef(null);  // soften highs
-      const highshelfRef = useRef(null);  // gentle clarity bump when boost on
-      const compressorRef= useRef(null);  // loudness control for phones
-
-      /* Playback volume boost: Store audio context & gain node per recording */
-      const playbackContextsRef = useRef(new Map());
-
-      const notes = {
-        'A3': 220.00, 'B3': 246.94, 'C4': 261.63, 'C#4': 277.18, 'D4': 293.66,
-        'D#4': 311.13, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00
-      };
 
       /* Spanish Voice Training Readings */
       const readings = [
@@ -216,362 +221,11 @@ Hoy viernes, me he despertado pensando en ella`
         }
       ];
 
-      /* Init mic + analyser */
-      const initAudio = useCallback(async () => {
-        try {
-          // Create AudioContext first (iOS requires this before getUserMedia)
-          if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-          }
-
-          // iOS/Safari: AudioContext starts suspended, must resume with user gesture
-          if (audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
-          }
-
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false
-            }
-          });
-          micStreamRef.current = stream;
-          setMicPermission('granted');
-
-          const source = audioContextRef.current.createMediaStreamSource(stream);
-          analyserRef.current = audioContextRef.current.createAnalyser();
-          analyserRef.current.fftSize = 2048;
-          source.connect(analyserRef.current);
-
-          setAudioInitialized(true);
-          startPitchDetection();
-        } catch (err) {
-          console.error('Microphone error:', err);
-          if (err.name === 'NotAllowedError') {
-            setMicPermission('denied');
-          } else if (err.name === 'NotFoundError') {
-            console.error('No microphone found');
-            setMicPermission('denied');
-          } else {
-            setMicPermission('denied');
-          }
-        }
-      }, []);
-
-      /* Pitch detection (simple dominant-bin) */
-      const startPitchDetection = useCallback(() => {
-        if (!analyserRef.current || !audioContextRef.current) return;
-
-        const bufferLength = analyserRef.current.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-
-        const detect = () => {
-          if (!analyserRef.current) return;
-          analyserRef.current.getByteFrequencyData(dataArray);
-
-          let maxValue = 0, maxIndex = 0;
-          for (let i = 0; i < bufferLength; i++) {
-            if (dataArray[i] > maxValue) { maxValue = dataArray[i]; maxIndex = i; }
-          }
-
-          if (maxValue > 50) {
-            const nyquist = audioContextRef.current.sampleRate / 2;
-            const frequency = (maxIndex * nyquist) / bufferLength;
-            if (frequency > 80 && frequency < 500) setCurrentPitch(Math.round(frequency));
-          } else {
-            setCurrentPitch(0);
-          }
-
-          pitchDetectionRef.current = requestAnimationFrame(detect);
-        };
-
-        detect();
-      }, []);
-
-      // Pause pitch detection (for playback to get full volume on iOS)
-      const pausePitchDetection = useCallback(() => {
-        if (pitchDetectionRef.current) {
-          cancelAnimationFrame(pitchDetectionRef.current);
-          pitchDetectionRef.current = null;
-        }
-      }, []);
-
-      // Resume pitch detection
-      const resumePitchDetection = useCallback(() => {
-        if (micActive && !pitchDetectionRef.current) {
-          startPitchDetection();
-        }
-      }, [micActive, startPitchDetection]);
-
-      /* Start/Stop drone */
-      const startDrone = useCallback(async () => {
-        if (!audioContextRef.current) return;
-        try {
-          // iOS/Safari unlock on gesture
-          if (audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
-          }
-
-          const ctx = audioContextRef.current;
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const lowpass = ctx.createBiquadFilter();
-          const shelf   = ctx.createBiquadFilter();
-          const comp    = ctx.createDynamicsCompressor();
-
-          // Timbre + note
-          osc.type = timbre;
-          osc.frequency.value = notes[selectedNote];
-
-          // Soften metallic edge with a gentle lowpass when enabled
-          lowpass.type = 'lowpass';
-          lowpass.frequency.value = softenHighs ? 2400 : 18000;
-          lowpass.Q.value = 0.7;
-
-          // Subtle clarity for small speakers when "phone boost" is on
-          shelf.type = 'highshelf';
-          shelf.frequency.value = 2500;
-          shelf.gain.value = phoneBoost ? 3 : 0;
-
-          // Dynamics to raise perceived loudness on phones
-          if (phoneBoost) {
-            comp.threshold.setValueAtTime(-26, ctx.currentTime);
-            comp.knee.setValueAtTime(9, ctx.currentTime);
-            comp.ratio.setValueAtTime(3, ctx.currentTime);
-          } else {
-            // Neutral settings (effectively bypass)
-            comp.threshold.setValueAtTime(0, ctx.currentTime);
-            comp.knee.setValueAtTime(0, ctx.currentTime);
-            comp.ratio.setValueAtTime(1, ctx.currentTime);
-          }
-          comp.attack.setValueAtTime(0.003, ctx.currentTime);
-          comp.release.setValueAtTime(0.25, ctx.currentTime);
-
-          // Volume uses base gain scaled by slider (0–200%)
-          gain.gain.value = baseGain * (volumePct / 100);
-
-          // Connect graph: osc -> lowpass -> highshelf -> compressor -> gain -> out
-          osc.connect(lowpass);
-          lowpass.connect(shelf);
-          shelf.connect(comp);
-          comp.connect(gain);
-          gain.connect(ctx.destination);
-
-          osc.start();
-
-          oscillatorRef.current = osc;
-          gainNodeRef.current = gain;
-          lowpassRef.current = lowpass;
-          highshelfRef.current = shelf;
-          compressorRef.current = comp;
-
-          setIsDronePlaying(true);
-        } catch (error) {
-          console.error('Drone error:', error);
-        }
-      }, [selectedNote, timbre, softenHighs, phoneBoost, volumePct]);
-
-      const stopDrone = useCallback(() => {
-        if (oscillatorRef.current) {
-          try { oscillatorRef.current.stop(); } catch {}
-          oscillatorRef.current = null;
-        }
-        gainNodeRef.current = null;
-        lowpassRef.current = null;
-        highshelfRef.current = null;
-        compressorRef.current = null;
-        setIsDronePlaying(false);
-      }, []);
-
-      const activateMicrophone = useCallback(async () => {
-        if (!audioInitialized) {
-          await initAudio();
-        }
-        // Ensure AudioContext is running (iOS requirement)
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          await audioContextRef.current.resume();
-        }
-        setMicActive(true);
-      }, [audioInitialized, initAudio]);
-
-      const togglePitchMonitor = useCallback(async () => {
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          try { await audioContextRef.current.resume(); } catch {}
-        }
+      // UI helper functions
+      const handleTogglePitchMonitor = useCallback(async () => {
+        await togglePitchMonitor();
         setShowBubble(true);
-      }, []);
-
-      const adjustNote = useCallback((direction) => {
-        const noteArray = Object.keys(notes);
-        const currentIndex = noteArray.indexOf(selectedNote);
-        let newIndex = direction === 'up' ? currentIndex + 1 : currentIndex - 1;
-        newIndex = Math.max(0, Math.min(noteArray.length - 1, newIndex));
-        const newNote = noteArray[newIndex];
-        setSelectedNote(newNote);
-
-        if (oscillatorRef.current) {
-          oscillatorRef.current.frequency.value = notes[newNote];
-        }
-      }, [selectedNote]);
-
-      /* Keep mic + context lifecycle clean */
-      useEffect(() => {
-        initAudio();
-        // Default: enable boost on small screens
-        try {
-          if (window.matchMedia && window.matchMedia('(max-width: 480px)').matches) {
-            setPhoneBoost(true);
-          }
-        } catch {}
-        return () => {
-          if (pitchDetectionRef.current) cancelAnimationFrame(pitchDetectionRef.current);
-          if (oscillatorRef.current) { try { oscillatorRef.current.stop(); } catch {} }
-          if (micStreamRef.current) micStreamRef.current.getTracks().forEach(t => t.stop());
-          if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} }
-        };
-      }, [initAudio]);
-
-      /* Live updates while playing */
-      useEffect(() => {
-        if (gainNodeRef.current) {
-          gainNodeRef.current.gain.value = baseGain * (volumePct / 100);
-        }
-      }, [volumePct]);
-
-      useEffect(() => {
-        if (oscillatorRef.current) oscillatorRef.current.type = timbre;
-      }, [timbre]);
-
-      useEffect(() => {
-        if (oscillatorRef.current) {
-          oscillatorRef.current.frequency.value = notes[selectedNote];
-        }
-      }, [selectedNote]);
-
-      useEffect(() => {
-        if (lowpassRef.current) {
-          lowpassRef.current.frequency.value = softenHighs ? 2400 : 18000;
-        }
-      }, [softenHighs]);
-
-      useEffect(() => {
-        const ctx = audioContextRef.current;
-        if (ctx && compressorRef.current && highshelfRef.current) {
-          const comp = compressorRef.current;
-          const shelf = highshelfRef.current;
-          if (phoneBoost) {
-            comp.threshold.setValueAtTime(-26, ctx.currentTime);
-            comp.knee.setValueAtTime(9, ctx.currentTime);
-            comp.ratio.setValueAtTime(3, ctx.currentTime);
-            shelf.gain.value = 3;
-          } else {
-            comp.threshold.setValueAtTime(0, ctx.currentTime);
-            comp.knee.setValueAtTime(0, ctx.currentTime);
-            comp.ratio.setValueAtTime(1, ctx.currentTime);
-            shelf.gain.value = 0;
-          }
-        }
-      }, [phoneBoost]);
-
-      // Recording functions
-      const startRecording = useCallback(async () => {
-        if (!micStreamRef.current) {
-          console.error('No microphone stream available');
-          return;
-        }
-
-        try {
-          // Ensure AudioContext is running before recording (iOS requirement)
-          if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
-          }
-
-          recordingChunksRef.current = [];
-
-          // iOS Safari fix: isTypeSupported() returns false for everything on iOS
-          // even though MediaRecorder works! Detect iOS/Safari directly.
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-          let options;
-          if (isIOS || (isSafari && !MediaRecorder.isTypeSupported('audio/webm'))) {
-            // iOS/Safari: High quality audio for voice training
-            options = { audioBitsPerSecond: 192000 };
-          } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-            options = { mimeType: 'audio/webm', audioBitsPerSecond: 192000 };
-          } else {
-            options = { audioBitsPerSecond: 192000 }; // High quality default
-          }
-
-          const mediaRecorder = new MediaRecorder(micStreamRef.current, options);
-
-          mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-              recordingChunksRef.current.push(event.data);
-            }
-          };
-
-          mediaRecorder.onstop = () => {
-            const mimeType = mediaRecorder.mimeType || 'audio/webm';
-            const blob = new Blob(recordingChunksRef.current, { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const timestamp = new Date().toLocaleString();
-            const newRecording = {
-              id: Date.now(),
-              timestamp,
-              blob,
-              url,
-              duration: null, // Could calculate if needed
-              mimeType
-            };
-
-            setRecordings(prev => [...prev, newRecording]);
-            setLastRecording(newRecording);
-          };
-
-          mediaRecorderRef.current = mediaRecorder;
-          mediaRecorder.start();
-          setIsRecording(true);
-        } catch (error) {
-          console.error('Error starting recording:', error);
-          alert('Recording failed. Please ensure microphone access is granted and try again.');
-        }
-      }, []);
-
-      const stopRecording = useCallback(() => {
-        if (mediaRecorderRef.current && isRecording) {
-          mediaRecorderRef.current.stop();
-          setIsRecording(false);
-        }
-      }, [isRecording]);
-
-      const deleteRecording = useCallback((id) => {
-        setRecordings(prev => {
-          const recording = prev.find(r => r.id === id);
-          if (recording) {
-            URL.revokeObjectURL(recording.url);
-          }
-          return prev.filter(r => r.id !== id);
-        });
-        if (lastRecording && lastRecording.id === id) {
-          setLastRecording(null);
-        }
-      }, [lastRecording]);
-
-      const downloadRecording = useCallback((recording) => {
-        const a = document.createElement('a');
-        a.href = recording.url;
-        // Determine file extension based on mimeType
-        let ext = 'webm';
-        if (recording.mimeType) {
-          if (recording.mimeType.includes('mp4')) ext = 'mp4';
-          else if (recording.mimeType.includes('aac')) ext = 'aac';
-          else if (recording.mimeType.includes('m4a')) ext = 'm4a';
-        }
-        a.download = `voice-recording-${recording.id}.${ext}`;
-        a.click();
-      }, []);
+      }, [togglePitchMonitor]);
 
       const getPitchColor = () => {
         if (currentPitch === 0) return 'bg-gray-400';
@@ -606,7 +260,7 @@ Hoy viernes, me he despertado pensando en ella`
           <header className="safe-top" style={{backgroundColor: 'var(--brand-pink)', color: 'white', boxShadow: '0 4px 20px rgba(255, 162, 254, 0.3)'}}>
             <div className="px-6 py-4">
               <div className="flex flex-col items-center gap-4">
-                <h1 className="text-3xl font-bold uppercase tracking-wide text-white drop-shadow-md text-center" style={{fontFamily: "'Averia Serif Libre', serif"}}>🇪🇸 Entrenamiento Vocal en Español</h1>
+                <h1 className="text-3xl font-bold uppercase tracking-wide text-white drop-shadow-md text-center" style={{fontFamily: "'Averia Serif Libre', serif"}}>🇪🇸 Entrenamiento Vocal</h1>
                 <div className="flex gap-3">
                   <button
                     onClick={() => window.location.href = '../'}
@@ -786,12 +440,10 @@ Hoy viernes, me he despertado pensando en ella`
                           <div className="font-bold text-lg" style={{color: 'var(--brand-grey)'}}>{resource.title}</div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          {/* PDF Button */}
+                        {resource.isVideo ? (
+                          // Single button for video exercises
                           <a
-                            href={resource.pdfUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={resource.digitalPage}
                             className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
                             style={{
                               backgroundColor: 'var(--brand-purple)',
@@ -800,35 +452,54 @@ Hoy viernes, me he despertado pensando en ella`
                               boxShadow: '0 4px 15px rgba(144, 77, 255, 0.3)'
                             }}
                           >
-                            📄 PDF Printable
+                            🎬 Watch Video
                           </a>
-
-                          {/* Digital View Button */}
-                          {resource.status === 'available' ? (
+                        ) : (
+                          // Two-button layout for regular exercises
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* PDF Button */}
                             <a
-                              href={resource.digitalPage}
+                              href={resource.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
                               style={{
-                                backgroundColor: 'var(--brand-pink)',
-                                color: 'var(--brand-grey)',
+                                backgroundColor: 'var(--brand-purple)',
+                                color: 'white',
                                 textDecoration: 'none',
-                                boxShadow: '0 4px 15px rgba(255, 162, 254, 0.3)'
+                                boxShadow: '0 4px 15px rgba(144, 77, 255, 0.3)'
                               }}
                             >
-                              📱 View in App
+                              📄 PDF Printable
                             </a>
-                          ) : (
-                            <div
-                              className="text-center py-3 px-4 rounded-lg font-bold text-sm cursor-not-allowed"
-                              style={{
-                                backgroundColor: '#e5e7eb',
-                                color: '#9ca3af'
-                              }}
-                            >
-                              📱 Coming Soon
-                            </div>
-                          )}
-                        </div>
+
+                            {/* Digital View Button */}
+                            {resource.status === 'available' ? (
+                              <a
+                                href={resource.digitalPage}
+                                className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
+                                style={{
+                                  backgroundColor: 'var(--brand-pink)',
+                                  color: 'var(--brand-grey)',
+                                  textDecoration: 'none',
+                                  boxShadow: '0 4px 15px rgba(255, 162, 254, 0.3)'
+                                }}
+                              >
+                                📱 View in App
+                              </a>
+                            ) : (
+                              <div
+                                className="text-center py-3 px-4 rounded-lg font-bold text-sm cursor-not-allowed"
+                                style={{
+                                  backgroundColor: '#e5e7eb',
+                                  color: '#9ca3af'
+                                }}
+                              >
+                                📱 Coming Soon
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -931,16 +602,13 @@ Hoy viernes, me he despertado pensando en ella`
                     </button>
                   </div>
 
-                  {/* Recording controls */}
+                  {/* Recording controls (WAV format only) */}
                   <div className="space-y-2">
                     <button
                       onClick={isRecording ? stopRecording : startRecording}
-                      disabled={!micActive}
                       className={`w-full py-2 rounded-lg text-sm text-white font-semibold flex items-center justify-center gap-2 ${
-                        !micActive ? 'bg-gray-300 cursor-not-allowed' :
                         isRecording ? 'bg-red-600' : 'bg-purple-600'
                       }`}
-                      title={!micActive ? 'Activate microphone first' : ''}
                     >
                       {isRecording && <span className="inline-block w-3 h-3 bg-white rounded-full animate-pulse"></span>}
                       {isRecording ? 'Stop Recording' : '🎙️ Record'}
@@ -948,8 +616,16 @@ Hoy viernes, me he despertado pensando en ella`
 
                     {lastRecording && (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
+                          // Stop mic BEFORE starting playback (critical for iOS volume)
+                          stopMicrophoneForPlayback();
+
+                          // Wait for mic to fully release (Safari needs time to update audio route)
+                          await new Promise(resolve => setTimeout(resolve, 200));
+
                           const audio = new Audio(lastRecording.url);
+                          // Only restart on ended (not pause - that causes duplicate restarts)
+                          audio.onended = restartMicrophoneAfterPlayback;
                           audio.play();
                         }}
                         className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-pink-500"
@@ -1031,41 +707,6 @@ Hoy viernes, me he despertado pensando en ella`
                             playsinline
                             preload="auto"
                             src={recording.url}
-                            onLoadedMetadata={(e) => {
-                              const audioElement = e.target;
-                              audioElement.volume = 1.0; // Maximum volume
-
-                              // Force iOS to use loudspeaker
-                              if (audioElement.webkitSetPresentationMode) {
-                                audioElement.webkitSetPresentationMode('inline');
-                              }
-
-                              // Set up Web Audio API for volume boost (iOS-friendly)
-                              try {
-                                // Check if we already set up this audio element
-                                if (!playbackContextsRef.current.has(recording.id)) {
-                                  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                                  const source = ctx.createMediaElementSource(audioElement);
-                                  const gainNode = ctx.createGain();
-
-                                  // 4x volume boost for iOS playback
-                                  gainNode.gain.value = 4.0;
-
-                                  // Connect: audio element -> gain -> speakers
-                                  source.connect(gainNode);
-                                  gainNode.connect(ctx.destination);
-
-                                  // Store for cleanup
-                                  playbackContextsRef.current.set(recording.id, { ctx, gainNode });
-                                }
-                              } catch (err) {
-                                // Fallback to regular playback if Web Audio fails
-                                console.log('Web Audio boost unavailable, using standard playback');
-                              }
-                            }}
-                            onPlay={pausePitchDetection}
-                            onPause={resumePitchDetection}
-                            onEnded={resumePitchDetection}
                             className="w-full mb-3"
                             style={{height: '40px'}}
                           />

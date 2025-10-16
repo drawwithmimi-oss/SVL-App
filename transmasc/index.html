@@ -21,6 +21,12 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- WebAudioRecorder.js Library -->
+  <script src="../js/WebAudioRecorder.min.js"></script>
+
+  <!-- Voice Audio Core - Shared audio engine (v2.6) -->
+  <script src="../js/voice-audio-core.js"></script>
+
   <!-- Averia Serif Libre Font -->
   <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
 
@@ -73,6 +79,10 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-10px); }
     }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
     .pitch-indicator { transition: all 0.3s ease; }
 
     /* Prevent accidental selection */
@@ -101,26 +111,50 @@
     const { useState, useRef, useEffect, useCallback } = React;
 
     function VoiceTrainingReader() {
-      const [isDronePlaying, setIsDronePlaying] = useState(false);
-      const [selectedNote, setSelectedNote] = useState('C4');
-      const [currentPitch, setCurrentPitch] = useState(0);
-      const [micPermission, setMicPermission] = useState('pending');
-      const [audioInitialized, setAudioInitialized] = useState(false);
-      const [micActive, setMicActive] = useState(false);
+      // UI-only state (not audio-related)
       const [showBubble, setShowBubble] = useState(true); // Auto-show monitor
       const [bubbleExpanded, setBubbleExpanded] = useState(false);
       const [showSettingsModal, setShowSettingsModal] = useState(false);
       const [selectedReading, setSelectedReading] = useState(null);
       const [fontSize, setFontSize] = useState('large');
-
-      // Recording state
-      const [isRecording, setIsRecording] = useState(false);
-      const [recordings, setRecordings] = useState([]);
-      const [lastRecording, setLastRecording] = useState(null);
       const [showRecordingsModal, setShowRecordingsModal] = useState(false);
-      const mediaRecorderRef = useRef(null);
-      const recordingChunksRef = useRef([]);
-      const audioRefs = useRef({});
+
+      // Use shared audio engine (v2.6)
+      const audio = useVoiceAudio(showRecordingsModal);
+
+      // Destructure audio API for convenience
+      const {
+        isDronePlaying,
+        selectedNote,
+        currentPitch,
+        micPermission,
+        audioInitialized,
+        micActive,
+        isRecording,
+        recordings,
+        lastRecording,
+        volumePct,
+        timbre,
+        softenHighs,
+        phoneBoost,
+        setVolumePct,
+        setTimbre,
+        setSoftenHighs,
+        setPhoneBoost,
+        setSelectedNote,
+        activateMicrophone,
+        togglePitchMonitor,
+        startDrone,
+        stopDrone,
+        adjustNote,
+        startRecording,
+        stopRecording,
+        deleteRecording,
+        downloadRecording,
+        audioRefs,
+        notes,
+        baseGain
+      } = audio;
 
       /* Check URL params on load to auto-select exercises */
       useEffect(() => {
@@ -132,35 +166,6 @@
           }
         }
       }, []);
-
-      /* Volume 0–200% of safe base gain (0.2) */
-      const [volumePct, setVolumePct] = useState(100);
-      const baseGain = 0.2;
-
-      /* NEW: timbre + gentle loudness helpers */
-      const [timbre, setTimbre] = useState('sine');      // sine, triangle, sawtooth, square
-      const [softenHighs, setSoftenHighs] = useState(true); // lowpass to avoid "metallic"
-      const [phoneBoost, setPhoneBoost] = useState(false);  // EQ + compressor for phones
-
-      const audioContextRef = useRef(null);
-      const oscillatorRef   = useRef(null);
-      const gainNodeRef     = useRef(null);
-      const analyserRef     = useRef(null);
-      const micStreamRef    = useRef(null);
-      const pitchDetectionRef = useRef(null);
-
-      /* NEW: processing nodes so we can tweak live */
-      const lowpassRef   = useRef(null);  // soften highs
-      const highshelfRef = useRef(null);  // gentle clarity bump when boost on
-      const compressorRef= useRef(null);  // loudness control for phones
-
-      /* Playback volume boost: Store audio context & gain node per recording */
-      const playbackContextsRef = useRef(new Map());
-
-      const notes = {
-        'A3': 220.00, 'B3': 246.94, 'C4': 261.63, 'C#4': 277.18, 'D4': 293.66,
-        'D#4': 311.13, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00
-      };
 
       /* Transmasc Voice Training Readings */
       const readings = [
@@ -176,57 +181,76 @@ Throughout the centuries people have explained the rainbow in various ways. Some
 Many complicated ideas about the rainbow have been formed. The difference in the rainbow depends considerably upon the size of the drops, and the width of the colored band increases as the size of the drops increases. The actual primary rainbow observed is said to be the effect of superimposition of a number of bows. If the red of the second bow falls upon the green of the first, the result is a bow with an abnormally wide yellow band, since red and green light when mixed form yellow. This is a very common type of bow, one showing mainly red and yellow, with little or no green or blue.`
         },
         {
-          id: 'grandfather',
-          title: 'Grandfather Passage',
-          description: 'Standard practice text',
-          image: '../assets/Visuals/icones/Transmasc/Grandfather Passage.png',
-          content: `You wish to know all about my grandfather. Well, he is nearly 93 years old, yet he still thinks as swiftly as ever. He usually dresses himself in an old black frock coat with several buttons missing. A long beard clings to his chin, giving those who observe him a pronounced feeling of the utmost respect. When he speaks, his voice is just a bit cracked and quivers. Twice each day he plays skillfully and with zest upon a small organ. Except in the winter when the snow or ice prevents it, he slowly takes short walks in the open air. We have often urged him to walk more and smoke less, but he always answers, "Banana oil!" Grandfather likes to be modern in his language.`
+          id: 'bouncy-lady-mary',
+          title: 'Lady Mary from \'The Admirable Crichton\'',
+          description: 'Bouncy Voice',
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `I sighted a herd near Penguin's Creek, but had to creep round Silver Lake to get to windward of them. However, they spotted me and then the fun began. There was nothing for it but to try and run them down, so I singled out a fat buck and away we went down the shore of the lake, up the valley of rolling stones; he doubled into Brawling River and took to the water, but I swam after him; the river is only half a mile broad there, but it runs strong. He went spinning down the rapids, down I went in pursuit; he clambered ashore, I clambered ashore; away we tore helter-skelter up the hill and down again. I lost him in the marshes, got on his track again near Bread Fruit Wood, and brought him down with an arrow in Firefly Grove.`
         },
         {
-          id: 'syllable-beanstalk',
-          title: '"The Beanstalk" by Tara Meddaugh',
+          id: 'bouncy-lucy',
+          title: 'Lucy Van Pelt from \'You\'re A Good Man, Charlie Brown\'',
+          description: 'Bouncy Voice',
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `Do you know what I intend? I intend to be a queen. When I grow up I'm going to be the biggest queen there ever was, and I'll live in a big palace and when I go out in my coach, all the people will wave and I will shout at them, and...and...in the summertime I will go to my summer palace and I'll wear my crown in swimming and everything, and all the people will cheer and I will shout at them... What do you mean I can't be queen? Nobody should be kept from being a queen if she wants to be one. It's usually just a matter of knowing the right people....well.... if I can't be a queen, then I'll be very rich then I will buy myself a queendom. Yes, I will buy myself a queendom and then I'll kick out the old queen and take over the whole operation myself. I will be head queen.`
+        },
+        {
+          id: 'tempo-sally',
+          title: 'Sally Brown from \'You\'re A Good Man, Charlie Brown\'',
+          description: 'Tempo Variance',
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `A 'C'? A 'C'? I got a 'C' on my coathanger sculpture? How could anyone get a 'C' in coathanger sculpture? May I ask a question? Was I judged on the piece of sculpture itself? If so, is it not true that time alone can judge a work of art? Or was I judged on my talent? If so, is it fair that I be judged on a part of my life over which I have no control? If I was judged on my effort, then I was judged unfairly, for I tried as hard as I could! Was I judged on what I had learned about this project? If so, then were not you, my teacher, also being judged on your ability to transmit your knowledge to me? Are you willing to share my 'C'? Perhaps I was being judged on the quality of coathanger itself out of which my creation was made...now is this not also unfair? Am I to be judged by the quality of coat hangers that are used by the drycleaning establishment that returns our garments? Is that not the responsibility of my parents? Should they not share my 'C'?`
+        },
+        {
+          id: 'tempo-beatrix',
+          title: 'Beatrix from \'Promedy\'',
+          description: 'Tempo Variance',
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `Young women need the Prom. It's a rite of passage as sacred as getting your driver's license or buying your first bra. There are only a few things in life that are guaranteed to be glorious and memorable and sparkling with gowns and cumberbunds. Prom is the quintessential teenage experience. Think of the unlucky grown-ups and the elderly who lament the day they decided not to go to the Prom. It is a key ingredient to a happy and meaningful life. Prom is short for Promenade, a slow, gentle walk through a shady glen, and this beloved ceremony symbolizes our journey from the shadows of adolescence to the bright sunshine of the adult world with all its freedoms. And it may be the only chance I'll ever have to dance with someone. Maybe I'll never have someone get down on a knee and offer me a diamond ring. Maybe I'll never walk down the aisle with a smug look of bridal triumph. But it is my right, and the right of every book-wormy, soon-to-be librarian to have one night of Cinderella magic. Even if we have to go with our cousin, or our gay best friend from tap class, we will have a Prom. And you will help me.`
+        },
+        {
+          id: 'vowel-sister-winnie',
+          title: 'Sister Winnie from \'Folk\'',
+          description: 'Vowel Elongation',
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `Oh, it was fine. I mean: not fine fine – everything's... I've been at the hospital, Kayleigh. I don't know if Stephen said. Getting some tests done. I've got angina. Which for some reason I keep calling: vagina. It doesn't help. It means, Kayleigh, no more fun. No more drinking, no more getting worked up, no more smoking, apparently – I'm ignoring that, obviously but. I'm getting pills, blood-thinners. They've showered me with leaflets. The consultant basically said I could pop my clogs at any moment. Added to which: he was a very pale man, heavy-breather – I did wonder briefly if he might actually be Death, come to get me. But then one of the other doctors popped in, called him Nigel, mentioned something about badminton so I thought: probably not. It's hard to imagine the Grim Reaper with a shuttlecock. But that's not the worst bit, Stephen. Picture this: I've been through all the sitting, the waiting, been wired up to a monitor, jogged, et cetera, I've been jiggled about, prodded, pressed with some very chilly instruments, got released, finally, back into the world, with my clogged-up arteries and uncertain future, I'm in the lift going down, who should get into the lift with me on floor number seven? I'll give you a clue: he's got a hernia. And did he ask how I was? No. He spotted me, took a deep breath, launched into another two-hour rant about what a rough deal it is – complaining, whining. I mean, I know it's not nice to have a bit of your stomach lining poking out, I get it, I do, but really – how much more is there to say?`
+        },
+        {
+          id: 'vowel-sophia',
+          title: 'Sophia from \'Girlboss\'',
+          description: 'Vowel Elongation',
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `Adulthood is where dreams go to die. Grow up, get a job, become a drone, that's it. Then it's over. Society just wants to put everyone in a box. Well guess what society? There is no box. Cos I mean, if I thought the rest of my life would be spent as a mindless cog in a machine, I swear I'd just get a tattoo across my face that says: "Really man?" Just need to figure out a way of growing up without becoming a boring adult. You probably think I'm some spoiled brat who's never had it hard cause I didn't have to walk a mile to school. But here's the thing, I tried college for a year. Total bust. Everything you wanna learn, you could just look up online. I know how to open champagne with a sword.`
+        },
+        {
+          id: 'diction-elaine',
+          title: 'Elaine from \'The Graduate\'',
+          description: 'Diction and Articulation',
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `Well nothing's perfect Benjamin. I wish my mother didn't drink so much. I wish I'd never fallen out of that tree and broken my thumb because it so affects my fingering I'll probably never play the violin as well as I'd love to but that's about it for the bullshit, Benjamin. It's only bullshit if you let it pile up. Heaven's in the details. Someone said that. I think Robert Frost said that. I was in this diner with my roommate Diane? And this guy came along with a goat on a rope and it turns out the reason he's got a little goat on a rope is that he was thrown out the day before for bringing in his dog? But the point is that Diane had stood up to leave when she saw the man walk in and she sat straight down again and said, well if there's a goat I think I'll have dessert. And that's why I love Diane, because if you think like that you not only notice more little goats, you get more dessert.`
+        },
+        {
+          id: 'diction-gwendolen',
+          title: 'Gwendolen Fairfax from \'The Importance of Being Earnest\'',
+          description: 'Diction and Articulation',
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `Oh! It is strange he never mentioned to me that he had a ward. How secretive of him! He grows more interesting hourly. I am not sure, however, that the news inspires me with feelings of unmixed delight. I am very fond of you, Cecily; I have liked you ever since I met you! But I am bound to state that now that I know that you are Mr. Worthing's ward, I cannot help expressing a wish you were—well, just a little older than you seem to be—and not quite so very alluring in appearance. In fact, if I may speak candidly— [...] Well, to speak with perfect candour, Cecily, I wish that you were fully forty-two, and more than usually plain for your age. Ernest has a strong upright nature. He is the very soul of truth and honour. Disloyalty would be as impossible to him as deception. But even men of the noblest possible moral character are extremely susceptible to the influence of the physical charms of others. Modern, no less than Ancient History, supplies us with many most painful examples of what I refer to. If it were not so, indeed, History would be quite unreadable.`
+        },
+        {
+          id: 'syllable-dont-look',
+          title: '\'Don\'t Look At Me\' - monologue by Joseph Arnone',
           description: 'Syllable Separation',
-          image: '../assets/Visuals/icones/Transmasc/Masc Monologues.pdf.png',
-          content: `See, I didn't...really...think that I'd make it this far up. Although, I've always been a bit of a climber. When I was nine months old, my mom found me sitting on top of the brown cow in the barn one morning. I never considered myself afraid of heights before, but it's not really the climbing up that scares me. It's the getting down, Black Crow...It seemed so easy getting here—just put one foot on the branch then another and...Oh, I've tried going down already. I put my foot on a branch, but it's slippery now. See? It's like the sludge at the bottom of the pig trough. And you do not want to be climbing down from the clouds on pig sludge! I'd fly off and land down there in a broken bone pile. And then everyone would just say, "Well, that's Jack. He doesn't know how to climb down, poor boy." And I guess they'd be right.`
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `Don't look at me. You. Eh, eh, eh...when I address you, do not look at me. No eye contact. Is that understood? Look away. (beat) Okay, look at me now. (snaps her fingers) I told you not to look at me. Even if I tell you to look at me, do not look at me. Understood? Good, good darling.
+
+Oh! I have something in my eye, can you help me? (pointing) Looking, looking, looking! NO looking under all circumstances. You must raise up that attention span of yours. A fish could retain more darling. That is true. I have read it. Less attention span than a fish. Do not let that be you darling.`
         },
         {
-          id: 'syllable-theo',
-          title: '"What Theo Did" by Debra Neff',
+          id: 'syllable-eliza',
+          title: 'Eliza Doolittle from \'My Fair Lady\'',
           description: 'Syllable Separation',
-          image: '../assets/Visuals/icones/Transmasc/Masc Monologues.pdf.png',
-          content: `So this afternoon I get to school and Hector and Robert run to tell me what Theo did. A substitute took our morning class because Ms. Radford was sick. When the substitute asked Theo to solve a problem on the board, he said, "I can't, I'm having my midlife crisis." Hector and Robert said everybody laughed and laughed and even the substitute had to laugh but then she told him to do the problem anyway. I wish I'd been there! I would have laughed so hard! Theo is always doing stuff like that. He's a riot.
-
-Anyway, I hung out with Theo after school, and we're standing next to his locker and I go, "I heard what you said to the substitute," and I started laughing. But Theo wasn't laughing. He looked sort of nervous and he said, "I wasn't kidding. I really am having a midlife crisis. My mom says I'm probably going to live to be 26, so now that I'm 13, I'm halfway there. That's a midlife crisis, isn't it?"
-
-I thought he was joking because come on, who lives to be 26? But I could see he was really upset so I'm like, "Dude, you're mom's kidding. People don't die when they're 26. Look at Ms. Radford. She's at least 27." And then he started to cry! Can you believe it? And then I felt like such a jerk for laughing.`
-        },
-        {
-          id: 'tempo-pygmalion',
-          title: 'Pygmalion by George Bernard Shaw',
-          description: 'Tempo',
-          image: '../assets/Visuals/icones/Transmasc/Masc Monologues.pdf.png',
-          content: `I'm a good girl, I am! I'm only a poor girl, but I'm a good one. If I was asking for any compliment, I'd ask for it decent and respectable. I don't want no balmies teaching me. I'm a good girl I am; and I won't pick up no free-and-easy ways. And I'll talk as I like. You're not my teacher!`
-        },
-        {
-          id: 'tempo-play-wrong',
-          title: '"The Play That Goes Wrong"',
-          description: 'Tempo',
-          image: '../assets/Visuals/icones/Transmasc/Masc Monologues.pdf.png',
-          content: `Now look, I know we haven't always seen eye to eye. In fact, I'd go so far as to say that at times you have been a most unreasonable employer. But I want to put that all behind us. I've been doing a lot of thinking recently. About life, about this place, about... well, us, really. And I've come to realize something quite important. This estate means everything to me. It always has done. I grew up here, I learned to walk in these very grounds, and if I'm honest... I'd like to die here too. Not soon, obviously. But eventually. When the time comes. What I'm trying to say is... I'd like to make this relationship work.`
-        },
-        {
-          id: 'articulation-schroeder',
-          title: 'Schroeder from "Charlie Brown"',
-          description: 'Articulation',
-          image: '../assets/Visuals/icones/Transmasc/Masc Monologues.pdf.png',
-          content: `I'm sorry to have to say it to your face, Lucy, but it's true. You're a very crabby person. I know your crabbiness has probably become so natural to you now that you're not even aware when you're being crabby, but it's true just the same. You're a very crabby person and you're crabby to just about everyone you meet. Now I hope you don't mind my saying this, Lucy, and I hope you'll take it in the spirit that it's meant. I think we should be very open to any opportunity to learn more about ourselves. I think Socrates was very right when he said that one of the first rules for anyone in life is 'Know Thyself'. Well, I guess I've said about enough. I hope I haven't offended you or anything.`
-        },
-        {
-          id: 'articulation-there-he-is',
-          title: '"There He Is" by Joseph Arnone',
-          description: 'Articulation',
-          image: '../assets/Visuals/icones/Transmasc/Masc Monologues.pdf.png',
-          content: `My co-worker is the most annoying guy in the world. I wish to God I wasn't so nice to him when I first started working at my new job. I should have wondered why he was so overly nice at the start. I thought it was just good manners but it was purely desperation. You see, the guy is a douchebag, alright? There, I said it. All the other co-workers round on him like he's diseased and now I'm stuck with him and don't know how to get rid of him. I don't mean to sound mean and I know I probably do but you don't understand. For example, every morning when I get to the office, I go into the break room for my morning cup of coffee, this is my moment, the moment I take before dealing with my loser of a manager and all the other dipsh'ts I have to smile at and report to. It's this one little coffee moment, by myself, in the quiet of my tortured life, that I work up all the strength and courage I need to walk down that pathetic hallway, to my desk. But noooo, I have fantastic Andrew popping in now because he knows, he knows I'm all alone, so he jumps at the opportunity to speak to me with his cheese and fart breath, about whatever it is he did the night before, which is absolutely nothing all that interesting, whatsoever. (imitates Andrew) "I leveled up in my game man, I leveled up!" Who-gives-a-fly-ing-sh't-man?`
+          image: '../assets/Visuals/icones/Transfemme/Fem monologues .png',
+          content: `My aunt died of influenza, so they said. But it's my belief they done the old woman in. Yes Lord love you! Why should she die of influenza when she come through diphtheria right enough the year before? Fairly blue with it she was. They all thought she was dead. But my father, he kept ladling gin down her throat. Then she come to so sudden that she bit the bowl off the spoon. Now, what would you call a woman with that strength in her have to die of influenza, and what become of her new straw hat that should have come to me? Somebody pinched it, and what I say is, them that pinched it, done her in. Them she lived with would have killed her for a hat-pin, let alone a hat. And as for father ladling the gin down her throat, it wouldn't have killed her. Not her. Gin was as mother's milk to her. Besides, he's poured so much down his own throat that he knew the good of it.`
         },
         {
           id: 'exercises-link',
@@ -235,374 +259,26 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
           content: 'RESOURCES',
           isResourceList: true,
           resources: [
-            { title: 'Vowel Placement', pdfUrl: 'https://drive.google.com/file/d/1O77UEz7p8dH3KtmUwSMgqWj7B34_3bkT/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'Rainbow Passage', pdfUrl: 'https://drive.google.com/file/d/1F0GKKgbnQE7_GnUAXoBt3EIzH8kkpZho/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'Masc Monologues', pdfUrl: 'https://drive.google.com/file/d/11ZEbK-BE0OVag_t7HajVZ-9u7tTw74Zi/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'Masculine Vowel Chart', pdfUrl: 'https://drive.google.com/file/d/10YC1-trnQ6ss3ApMPH5GVEVH0HbTxRP7/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'Masc Vowel Glides', pdfUrl: 'https://drive.google.com/file/d/1wz1z8jr422-0enQEvtTf7un-wXHW4bVv/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'FTM Students Syllabus', pdfUrl: 'https://drive.google.com/file/d/1H3jjhw2NqYs-ekJNn383RUExNBZJ2byv/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'Grandfather Passage', pdfUrl: 'https://drive.google.com/file/d/17FkG9Wf3Be1txC8nRa7JIK25FN3whnjS/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'Consonant Buddies', pdfUrl: 'https://drive.google.com/file/d/13qUGZyE_07MByOMjc3ffqpd41BbAlRCA/view?usp=drive_link', status: 'coming-soon' }
+            { title: 'Consonant Buddies', pdfUrl: 'https://drive.google.com/file/d/1b2hiNqxY859vPY2yd57YiZ3jJ3EiJuIY/view?usp=share_link', digitalPage: './exercises/consonant-buddies.html', status: 'available' },
+            { title: 'Vowel Placement', pdfUrl: 'https://drive.google.com/file/d/1fZMboAFWvQdTeY69iynK3cIpABiI9t-u/view?usp=drive_link', status: 'coming-soon' },
+            { title: 'Fem Monologue', pdfUrl: 'https://drive.google.com/file/d/1V_qQbCDZSX5p9Ltl_QGdNruE_vZRQfwh/view?usp=drive_link', digitalPage: './index.html', status: 'available' },
+            { title: 'Fem Vowels - Diphthongs', pdfUrl: 'https://drive.google.com/file/d/1RTfmdl9flI8sAft2lnJF0K2nAzaKLhX0/view?usp=drive_link', digitalPage: './exercises/fem-vowels-diphthongs.html', status: 'available' },
+            { title: 'Fem Vowels - Pure', pdfUrl: 'https://drive.google.com/file/d/13D7saIPU8mtlIgQwy1e-UNkbQZo5PXZS/view?usp=sharing', digitalPage: './exercises/fem-vowels-pure.html', status: 'available' },
+            { title: 'Tongue Exercises For Students', digitalPage: './exercises/tongue-exercises.html', status: 'available', isVideo: true },
+            { title: 'MTF Students Syllabus', pdfUrl: 'https://drive.google.com/file/d/1fcfuEcKcqvJg-UxA2Lc1hfmjEZ_DuOXj/view?usp=drive_link', status: 'coming-soon' },
+            { title: 'Rainbow Passage', pdfUrl: 'https://drive.google.com/file/d/1Tw-oO8pFV1NJQLQxrlx9u4BPb7Am2aiN/view?usp=drive_link', status: 'coming-soon' },
+            { title: 'Rainbow Passage with Breaths', pdfUrl: 'https://drive.google.com/file/d/1Ihr6Es--WdxQpuQwvAtc2D_Ps9YV8O9-/view?usp=drive_link', status: 'coming-soon' },
+            { title: 'Recovery Bingo', pdfUrl: 'https://drive.google.com/file/d/1vw6i6ybc4K4nKFwbku3k_mj19vi3kl_t/view?usp=drive_link', digitalPage: './exercises/recovery-bingo.html', status: 'available' },
+            { title: 'Snowflake Concept Map', pdfUrl: 'https://drive.google.com/file/d/1JeuLGR5CzxuLJSe3_NYfhfq-wLlaPF6z/view?usp=drive_link', status: 'coming-soon' }
           ]
         }
       ];
 
-      /* Init mic + analyser */
-      const initAudio = useCallback(async () => {
-        try {
-          // Create AudioContext first (iOS requires this before getUserMedia)
-          if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-          }
-
-          // iOS/Safari: AudioContext starts suspended, must resume with user gesture
-          if (audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
-          }
-
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false
-            }
-          });
-          micStreamRef.current = stream;
-          setMicPermission('granted');
-
-          const source = audioContextRef.current.createMediaStreamSource(stream);
-          analyserRef.current = audioContextRef.current.createAnalyser();
-          analyserRef.current.fftSize = 2048;
-          source.connect(analyserRef.current);
-
-          setAudioInitialized(true);
-          startPitchDetection();
-        } catch (err) {
-          console.error('Microphone error:', err);
-          if (err.name === 'NotAllowedError') {
-            setMicPermission('denied');
-          } else if (err.name === 'NotFoundError') {
-            console.error('No microphone found');
-            setMicPermission('denied');
-          } else {
-            setMicPermission('denied');
-          }
-        }
-      }, []);
-
-      /* Pitch detection (simple dominant-bin) */
-      const startPitchDetection = useCallback(() => {
-        if (!analyserRef.current || !audioContextRef.current) return;
-
-        const bufferLength = analyserRef.current.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-
-        const detect = () => {
-          if (!analyserRef.current) return;
-          analyserRef.current.getByteFrequencyData(dataArray);
-
-          let maxValue = 0, maxIndex = 0;
-          for (let i = 0; i < bufferLength; i++) {
-            if (dataArray[i] > maxValue) { maxValue = dataArray[i]; maxIndex = i; }
-          }
-
-          if (maxValue > 50) {
-            const nyquist = audioContextRef.current.sampleRate / 2;
-            const frequency = (maxIndex * nyquist) / bufferLength;
-            if (frequency > 80 && frequency < 500) setCurrentPitch(Math.round(frequency));
-          } else {
-            setCurrentPitch(0);
-          }
-
-          pitchDetectionRef.current = requestAnimationFrame(detect);
-        };
-
-        detect();
-      }, []);
-
-      // Pause pitch detection (for playback to get full volume on iOS)
-      const pausePitchDetection = useCallback(() => {
-        if (pitchDetectionRef.current) {
-          cancelAnimationFrame(pitchDetectionRef.current);
-          pitchDetectionRef.current = null;
-        }
-      }, []);
-
-      // Resume pitch detection
-      const resumePitchDetection = useCallback(() => {
-        if (micActive && !pitchDetectionRef.current) {
-          startPitchDetection();
-        }
-      }, [micActive, startPitchDetection]);
-
-      /* Start/Stop drone */
-      const startDrone = useCallback(async () => {
-        if (!audioContextRef.current) return;
-        try {
-          // iOS/Safari unlock on gesture
-          if (audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
-          }
-
-          const ctx = audioContextRef.current;
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const lowpass = ctx.createBiquadFilter();
-          const shelf   = ctx.createBiquadFilter();
-          const comp    = ctx.createDynamicsCompressor();
-
-          // Timbre + note
-          osc.type = timbre;
-          osc.frequency.value = notes[selectedNote];
-
-          // Soften metallic edge with a gentle lowpass when enabled
-          lowpass.type = 'lowpass';
-          lowpass.frequency.value = softenHighs ? 2400 : 18000;
-          lowpass.Q.value = 0.7;
-
-          // Subtle clarity for small speakers when "phone boost" is on
-          shelf.type = 'highshelf';
-          shelf.frequency.value = 2500;
-          shelf.gain.value = phoneBoost ? 3 : 0;
-
-          // Dynamics to raise perceived loudness on phones
-          if (phoneBoost) {
-            comp.threshold.setValueAtTime(-26, ctx.currentTime);
-            comp.knee.setValueAtTime(9, ctx.currentTime);
-            comp.ratio.setValueAtTime(3, ctx.currentTime);
-          } else {
-            // Neutral settings (effectively bypass)
-            comp.threshold.setValueAtTime(0, ctx.currentTime);
-            comp.knee.setValueAtTime(0, ctx.currentTime);
-            comp.ratio.setValueAtTime(1, ctx.currentTime);
-          }
-          comp.attack.setValueAtTime(0.003, ctx.currentTime);
-          comp.release.setValueAtTime(0.25, ctx.currentTime);
-
-          // Volume uses base gain scaled by slider (0–200%)
-          gain.gain.value = baseGain * (volumePct / 100);
-
-          // Connect graph: osc -> lowpass -> highshelf -> compressor -> gain -> out
-          osc.connect(lowpass);
-          lowpass.connect(shelf);
-          shelf.connect(comp);
-          comp.connect(gain);
-          gain.connect(ctx.destination);
-
-          osc.start();
-
-          oscillatorRef.current = osc;
-          gainNodeRef.current = gain;
-          lowpassRef.current = lowpass;
-          highshelfRef.current = shelf;
-          compressorRef.current = comp;
-
-          setIsDronePlaying(true);
-        } catch (error) {
-          console.error('Drone error:', error);
-        }
-      }, [selectedNote, timbre, softenHighs, phoneBoost, volumePct]);
-
-      const stopDrone = useCallback(() => {
-        if (oscillatorRef.current) {
-          try { oscillatorRef.current.stop(); } catch {}
-          oscillatorRef.current = null;
-        }
-        gainNodeRef.current = null;
-        lowpassRef.current = null;
-        highshelfRef.current = null;
-        compressorRef.current = null;
-        setIsDronePlaying(false);
-      }, []);
-
-      const activateMicrophone = useCallback(async () => {
-        if (!audioInitialized) {
-          await initAudio();
-        }
-        // Ensure AudioContext is running (iOS requirement)
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          await audioContextRef.current.resume();
-        }
-        setMicActive(true);
-      }, [audioInitialized, initAudio]);
-
-      const togglePitchMonitor = useCallback(async () => {
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-          try { await audioContextRef.current.resume(); } catch {}
-        }
+      // UI helper functions
+      const handleTogglePitchMonitor = useCallback(async () => {
+        await togglePitchMonitor();
         setShowBubble(true);
-      }, []);
-
-      const adjustNote = useCallback((direction) => {
-        const noteArray = Object.keys(notes);
-        const currentIndex = noteArray.indexOf(selectedNote);
-        let newIndex = direction === 'up' ? currentIndex + 1 : currentIndex - 1;
-        newIndex = Math.max(0, Math.min(noteArray.length - 1, newIndex));
-        const newNote = noteArray[newIndex];
-        setSelectedNote(newNote);
-
-        if (oscillatorRef.current) {
-          oscillatorRef.current.frequency.value = notes[newNote];
-        }
-      }, [selectedNote]);
-
-      /* Keep mic + context lifecycle clean */
-      useEffect(() => {
-        initAudio();
-        // Default: enable boost on small screens
-        try {
-          if (window.matchMedia && window.matchMedia('(max-width: 480px)').matches) {
-            setPhoneBoost(true);
-          }
-        } catch {}
-        return () => {
-          if (pitchDetectionRef.current) cancelAnimationFrame(pitchDetectionRef.current);
-          if (oscillatorRef.current) { try { oscillatorRef.current.stop(); } catch {} }
-          if (micStreamRef.current) micStreamRef.current.getTracks().forEach(t => t.stop());
-          if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} }
-        };
-      }, [initAudio]);
-
-      /* Live updates while playing */
-      useEffect(() => {
-        if (gainNodeRef.current) {
-          gainNodeRef.current.gain.value = baseGain * (volumePct / 100);
-        }
-      }, [volumePct]);
-
-      useEffect(() => {
-        if (oscillatorRef.current) oscillatorRef.current.type = timbre;
-      }, [timbre]);
-
-      useEffect(() => {
-        if (oscillatorRef.current) {
-          oscillatorRef.current.frequency.value = notes[selectedNote];
-        }
-      }, [selectedNote]);
-
-      useEffect(() => {
-        if (lowpassRef.current) {
-          lowpassRef.current.frequency.value = softenHighs ? 2400 : 18000;
-        }
-      }, [softenHighs]);
-
-      useEffect(() => {
-        const ctx = audioContextRef.current;
-        if (ctx && compressorRef.current && highshelfRef.current) {
-          const comp = compressorRef.current;
-          const shelf = highshelfRef.current;
-          if (phoneBoost) {
-            comp.threshold.setValueAtTime(-26, ctx.currentTime);
-            comp.knee.setValueAtTime(9, ctx.currentTime);
-            comp.ratio.setValueAtTime(3, ctx.currentTime);
-            shelf.gain.value = 3;
-          } else {
-            comp.threshold.setValueAtTime(0, ctx.currentTime);
-            comp.knee.setValueAtTime(0, ctx.currentTime);
-            comp.ratio.setValueAtTime(1, ctx.currentTime);
-            shelf.gain.value = 0;
-          }
-        }
-      }, [phoneBoost]);
-
-      // Recording functions
-      const startRecording = useCallback(async () => {
-        if (!micStreamRef.current) {
-          console.error('No microphone stream available');
-          return;
-        }
-
-        try {
-          // Ensure AudioContext is running before recording (iOS requirement)
-          if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-            await audioContextRef.current.resume();
-          }
-
-          recordingChunksRef.current = [];
-
-          // iOS Safari fix: isTypeSupported() returns false for everything on iOS
-          // even though MediaRecorder works! Detect iOS/Safari directly.
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-          let options;
-          if (isIOS || (isSafari && !MediaRecorder.isTypeSupported('audio/webm'))) {
-            // iOS/Safari: High quality audio for voice training
-            options = { audioBitsPerSecond: 192000 };
-          } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-            options = { mimeType: 'audio/webm', audioBitsPerSecond: 192000 };
-          } else {
-            options = { audioBitsPerSecond: 192000 }; // High quality default
-          }
-
-          const mediaRecorder = new MediaRecorder(micStreamRef.current, options);
-
-          mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-              recordingChunksRef.current.push(event.data);
-            }
-          };
-
-          mediaRecorder.onstop = () => {
-            const mimeType = mediaRecorder.mimeType || 'audio/webm';
-            const blob = new Blob(recordingChunksRef.current, { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const timestamp = new Date().toLocaleString();
-            const newRecording = {
-              id: Date.now(),
-              timestamp,
-              blob,
-              url,
-              duration: null, // Could calculate if needed
-              mimeType
-            };
-
-            setRecordings(prev => [...prev, newRecording]);
-            setLastRecording(newRecording);
-          };
-
-          mediaRecorderRef.current = mediaRecorder;
-          mediaRecorder.start();
-          setIsRecording(true);
-        } catch (error) {
-          console.error('Error starting recording:', error);
-          alert('Recording failed. Please ensure microphone access is granted and try again.');
-        }
-      }, []);
-
-      const stopRecording = useCallback(() => {
-        if (mediaRecorderRef.current && isRecording) {
-          mediaRecorderRef.current.stop();
-          setIsRecording(false);
-        }
-      }, [isRecording]);
-
-      const deleteRecording = useCallback((id) => {
-        setRecordings(prev => {
-          const recording = prev.find(r => r.id === id);
-          if (recording) {
-            URL.revokeObjectURL(recording.url);
-          }
-          return prev.filter(r => r.id !== id);
-        });
-        if (lastRecording && lastRecording.id === id) {
-          setLastRecording(null);
-        }
-      }, [lastRecording]);
-
-      const downloadRecording = useCallback((recording) => {
-        const a = document.createElement('a');
-        a.href = recording.url;
-        // Determine file extension based on mimeType
-        let ext = 'webm';
-        if (recording.mimeType) {
-          if (recording.mimeType.includes('mp4')) ext = 'mp4';
-          else if (recording.mimeType.includes('aac')) ext = 'aac';
-          else if (recording.mimeType.includes('m4a')) ext = 'm4a';
-        }
-        a.download = `voice-recording-${recording.id}.${ext}`;
-        a.click();
-      }, []);
+      }, [togglePitchMonitor]);
 
       const getPitchColor = () => {
         if (currentPitch === 0) return 'bg-gray-400';
@@ -644,7 +320,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                     className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
                     onMouseOver={(e) => {
                       e.target.style.backgroundColor = 'white';
-                      e.target.style.color = 'var(--brand-purple)';
+                      e.target.style.color = 'var(--brand-pink)';
                     }}
                     onMouseOut={(e) => {
                       e.target.style.backgroundColor = 'transparent';
@@ -659,7 +335,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                       className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
                       onMouseOver={(e) => {
                         e.target.style.backgroundColor = 'white';
-                        e.target.style.color = 'var(--brand-purple)';
+                        e.target.style.color = 'var(--brand-pink)';
                       }}
                       onMouseOut={(e) => {
                         e.target.style.backgroundColor = 'transparent';
@@ -678,7 +354,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                       className="transition-all duration-300 font-bold uppercase tracking-wide text-sm px-4 py-2 rounded-full border-2 border-white text-white hover:bg-white"
                       onMouseOver={(e) => {
                         e.target.style.backgroundColor = 'white';
-                        e.target.style.color = 'var(--brand-purple)';
+                        e.target.style.color = 'var(--brand-pink)';
                       }}
                       onMouseOut={(e) => {
                         e.target.style.backgroundColor = 'transparent';
@@ -720,13 +396,13 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                         onClick={() => setSelectedReading(reading)}
                         className="w-full text-left p-6 border-2 transition-all duration-300 transform hover:-translate-y-1"
                         style={{
-                          borderColor: 'var(--brand-blue)',
+                          borderColor: 'var(--brand-pink)',
                           borderRadius: '15px',
                           backgroundColor: 'var(--brand-beige)'
                         }}
                         onMouseOver={(e) => {
                           e.target.style.backgroundColor = 'white';
-                          e.target.style.boxShadow = '0 8px 25px rgba(111, 129, 255, 0.2)';
+                          e.target.style.boxShadow = '0 8px 25px rgba(255, 162, 254, 0.2)';
                         }}
                         onMouseOut={(e) => {
                           e.target.style.backgroundColor = 'var(--brand-beige)';
@@ -748,9 +424,9 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                     <button
                       onClick={() => setSelectedReading(null)}
                       className="font-bold uppercase tracking-wide text-sm mb-4 transition-colors"
-                      style={{color: 'var(--brand-blue)'}}
+                      style={{color: 'var(--brand-pink)'}}
                       onMouseOver={(e) => e.target.style.color = 'var(--brand-purple)'}
-                      onMouseOut={(e) => e.target.style.color = 'var(--brand-blue)'}
+                      onMouseOut={(e) => e.target.style.color = 'var(--brand-pink)'}
                     >
                       ← Back to Materials
                     </button>
@@ -807,22 +483,20 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                         key={index}
                         className="p-5 border-2 transition-all duration-300"
                         style={{
-                          borderColor: 'var(--brand-purple)',
+                          borderColor: 'var(--brand-pink)',
                           borderRadius: '15px',
                           backgroundColor: 'var(--brand-beige)',
-                          boxShadow: '0 2px 10px rgba(144, 77, 255, 0.1)'
+                          boxShadow: '0 2px 10px rgba(255, 162, 254, 0.1)'
                         }}
                       >
                         <div className="mb-3">
                           <div className="font-bold text-lg" style={{color: 'var(--brand-grey)'}}>{resource.title}</div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          {/* PDF Button */}
+                        {resource.isVideo ? (
+                          // Single button for video exercises
                           <a
-                            href={resource.pdfUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={resource.digitalPage}
                             className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
                             style={{
                               backgroundColor: 'var(--brand-purple)',
@@ -831,35 +505,54 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                               boxShadow: '0 4px 15px rgba(144, 77, 255, 0.3)'
                             }}
                           >
-                            📄 PDF Printable
+                            🎬 Watch Video
                           </a>
-
-                          {/* Digital View Button */}
-                          {resource.status === 'available' ? (
+                        ) : (
+                          // Two-button layout for regular exercises
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* PDF Button */}
                             <a
-                              href={resource.digitalPage}
+                              href={resource.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
                               style={{
-                                backgroundColor: 'var(--brand-pink)',
-                                color: 'var(--brand-grey)',
+                                backgroundColor: 'var(--brand-purple)',
+                                color: 'white',
                                 textDecoration: 'none',
-                                boxShadow: '0 4px 15px rgba(255, 162, 254, 0.3)'
+                                boxShadow: '0 4px 15px rgba(144, 77, 255, 0.3)'
                               }}
                             >
-                              📱 View in App
+                              📄 PDF Printable
                             </a>
-                          ) : (
-                            <div
-                              className="text-center py-3 px-4 rounded-lg font-bold text-sm cursor-not-allowed"
-                              style={{
-                                backgroundColor: '#e5e7eb',
-                                color: '#9ca3af'
-                              }}
-                            >
-                              📱 Coming Soon
-                            </div>
-                          )}
-                        </div>
+
+                            {/* Digital View Button */}
+                            {resource.status === 'available' ? (
+                              <a
+                                href={resource.digitalPage}
+                                className="block text-center py-3 px-4 rounded-lg font-bold text-sm transition-all duration-300 hover:-translate-y-1"
+                                style={{
+                                  backgroundColor: 'var(--brand-pink)',
+                                  color: 'var(--brand-grey)',
+                                  textDecoration: 'none',
+                                  boxShadow: '0 4px 15px rgba(255, 162, 254, 0.3)'
+                                }}
+                              >
+                                📱 View in App
+                              </a>
+                            ) : (
+                              <div
+                                className="text-center py-3 px-4 rounded-lg font-bold text-sm cursor-not-allowed"
+                                style={{
+                                  backgroundColor: '#e5e7eb',
+                                  color: '#9ca3af'
+                                }}
+                              >
+                                📱 Coming Soon
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -962,30 +655,35 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                     </button>
                   </div>
 
-                  {/* Recording controls */}
+                  {/* Recording controls (WAV format only) */}
                   <div className="space-y-2">
                     <button
                       onClick={isRecording ? stopRecording : startRecording}
-                      disabled={!micActive}
                       className={`w-full py-2 rounded-lg text-sm text-white font-semibold flex items-center justify-center gap-2 ${
-                        !micActive ? 'bg-gray-300 cursor-not-allowed' :
                         isRecording ? 'bg-red-600' : 'bg-purple-600'
                       }`}
-                      title={!micActive ? 'Activate microphone first' : ''}
                     >
                       {isRecording && <span className="inline-block w-3 h-3 bg-white rounded-full animate-pulse"></span>}
-                      {isRecording ? 'Stop Recording' : 'Record'}
+                      {isRecording ? 'Stop Recording' : '🎙️ Record'}
                     </button>
 
                     {lastRecording && (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
+                          // Stop mic BEFORE starting playback (critical for iOS volume)
+                          stopMicrophoneForPlayback();
+
+                          // Wait for mic to fully release (Safari needs time to update audio route)
+                          await new Promise(resolve => setTimeout(resolve, 200));
+
                           const audio = new Audio(lastRecording.url);
+                          // Only restart on ended (not pause - that causes duplicate restarts)
+                          audio.onended = restartMicrophoneAfterPlayback;
                           audio.play();
                         }}
                         className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-pink-500"
                       >
-                        Replay Last
+                        ▶️ Replay Last
                       </button>
                     )}
 
@@ -994,7 +692,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                         onClick={() => setShowRecordingsModal(true)}
                         className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-orange-500"
                       >
-                        Recordings ({recordings.length})
+                        📋 Recordings ({recordings.length})
                       </button>
                     )}
                   </div>
@@ -1015,7 +713,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
               >
                 {/* Modal Header */}
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between" style={{backgroundColor: 'var(--brand-purple)'}}>
-                  <h2 className="text-xl font-bold text-white">Your Recordings</h2>
+                  <h2 className="text-xl font-bold text-white">🎙️ Your Recordings</h2>
                   <button
                     onClick={() => setShowRecordingsModal(false)}
                     className="text-white text-2xl hover:bg-white hover:bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center"
@@ -1027,7 +725,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                 {/* Warning Message */}
                 <div className="p-4 bg-yellow-50 border-b border-yellow-200">
                   <p className="text-sm text-yellow-800">
-                    Note: Recordings are stored temporarily in your browser. They will be lost when you close this tab or refresh the page.
+                    ⚠️ <strong>Note:</strong> Recordings are stored temporarily in your browser. They will be lost when you close this tab or refresh the page.
                   </p>
                 </div>
 
@@ -1035,7 +733,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                 <div className="p-4 overflow-y-auto max-h-[calc(80vh-200px)]">
                   {recordings.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                      <div className="text-4xl mb-2"></div>
+                      <div className="text-4xl mb-2">🎤</div>
                       <p>No recordings yet</p>
                     </div>
                   ) : (
@@ -1062,41 +760,6 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                             playsinline
                             preload="auto"
                             src={recording.url}
-                            onLoadedMetadata={(e) => {
-                              const audioElement = e.target;
-                              audioElement.volume = 1.0; // Maximum volume
-
-                              // Force iOS to use loudspeaker
-                              if (audioElement.webkitSetPresentationMode) {
-                                audioElement.webkitSetPresentationMode('inline');
-                              }
-
-                              // Set up Web Audio API for volume boost (iOS-friendly)
-                              try {
-                                // Check if we already set up this audio element
-                                if (!playbackContextsRef.current.has(recording.id)) {
-                                  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                                  const source = ctx.createMediaElementSource(audioElement);
-                                  const gainNode = ctx.createGain();
-
-                                  // 4x volume boost for iOS playback
-                                  gainNode.gain.value = 4.0;
-
-                                  // Connect: audio element -> gain -> speakers
-                                  source.connect(gainNode);
-                                  gainNode.connect(ctx.destination);
-
-                                  // Store for cleanup
-                                  playbackContextsRef.current.set(recording.id, { ctx, gainNode });
-                                }
-                              } catch (err) {
-                                // Fallback to regular playback if Web Audio fails
-                                console.log('Web Audio boost unavailable, using standard playback');
-                              }
-                            }}
-                            onPlay={pausePitchDetection}
-                            onPause={resumePitchDetection}
-                            onEnded={resumePitchDetection}
                             className="w-full mb-3"
                             style={{height: '40px'}}
                           />
@@ -1108,7 +771,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                               className="flex-1 py-2 px-3 rounded-lg text-sm font-semibold text-white"
                               style={{backgroundColor: 'var(--brand-purple)'}}
                             >
-                              Download
+                              ⬇️ Download
                             </button>
                             <button
                               onClick={() => {
@@ -1118,7 +781,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                               }}
                               className="py-2 px-3 rounded-lg text-sm font-semibold text-white bg-red-500"
                             >
-                              Delete
+                              🗑️ Delete
                             </button>
                           </div>
                         </div>
@@ -1152,7 +815,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Modal Header */}
-                <div className="p-4 border-b border-gray-200 flex items-center justify-between" style={{backgroundColor: 'var(--brand-blue)'}}>
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between" style={{backgroundColor: 'var(--brand-pink)'}}>
                   <h2 className="text-xl font-bold text-white">🎵 Pitch Control Settings</h2>
                   <button
                     onClick={() => setShowSettingsModal(false)}
@@ -1173,7 +836,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                       value={selectedNote}
                       onChange={(e) => setSelectedNote(e.target.value)}
                       className="w-full p-3 text-base border-2 font-medium rounded-lg"
-                      style={{borderColor: 'var(--brand-blue)', backgroundColor: 'var(--brand-beige)'}}
+                      style={{borderColor: 'var(--brand-pink)', backgroundColor: 'var(--brand-beige)'}}
                     >
                       {Object.entries(notes).map(([note, freq]) => (
                         <option key={note} value={note}>
@@ -1192,7 +855,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                       value={timbre}
                       onChange={(e) => setTimbre(e.target.value)}
                       className="w-full p-3 text-base border-2 font-medium rounded-lg"
-                      style={{borderColor: 'var(--brand-blue)', backgroundColor: 'var(--brand-beige)'}}
+                      style={{borderColor: 'var(--brand-pink)', backgroundColor: 'var(--brand-beige)'}}
                     >
                       <option value="sine">Sine — soft / pure</option>
                       <option value="triangle">Triangle — warm</option>
@@ -1204,7 +867,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                   {/* Volume slider */}
                   <div>
                     <label className="block text-sm font-bold uppercase tracking-wide mb-2" style={{color: 'var(--brand-grey)'}}>
-                      Drone Volume: <span className="font-bold" style={{color: 'var(--brand-blue)'}}>{volumePct}%</span>
+                      Drone Volume: <span className="font-bold" style={{color: 'var(--brand-pink)'}}>{volumePct}%</span>
                     </label>
                     <input
                       type="range"
@@ -1215,7 +878,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                       onChange={(e) => setVolumePct(parseInt(e.target.value, 10))}
                       className="w-full"
                       aria-label="Drone volume percent"
-                      style={{accentColor: 'var(--brand-blue)'}}
+                      style={{accentColor: 'var(--brand-pink)'}}
                     />
                     <p className="text-xs font-medium mt-1" style={{color: 'var(--brand-grey)', opacity: '0.7'}}>
                       100% = original loudness. 200% = twice the original (safe).
@@ -1230,7 +893,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                         checked={phoneBoost}
                         onChange={(e) => setPhoneBoost(e.target.checked)}
                         className="w-4 h-4"
-                        style={{accentColor: 'var(--brand-blue)'}}
+                        style={{accentColor: 'var(--brand-pink)'}}
                       />
                       <span className="text-sm font-bold uppercase tracking-wide" style={{color: 'var(--brand-grey)'}}>
                         Phone Boost (EQ + compressor)
@@ -1242,7 +905,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                         checked={softenHighs}
                         onChange={(e) => setSoftenHighs(e.target.checked)}
                         className="w-4 h-4"
-                        style={{accentColor: 'var(--brand-blue)'}}
+                        style={{accentColor: 'var(--brand-pink)'}}
                       />
                       <span className="text-sm font-bold uppercase tracking-wide" style={{color: 'var(--brand-grey)'}}>
                         Soften highs (less metallic)
@@ -1256,7 +919,7 @@ I thought he was joking because come on, who lives to be 26? But I could see he 
                   <button
                     onClick={() => setShowSettingsModal(false)}
                     className="w-full py-2 rounded-lg text-sm font-semibold text-white"
-                    style={{backgroundColor: 'var(--brand-blue)'}}
+                    style={{backgroundColor: 'var(--brand-pink)'}}
                   >
                     Done
                   </button>
