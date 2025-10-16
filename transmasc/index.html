@@ -158,9 +158,21 @@
         baseGain
       } = audio;
 
-      /* Check URL params on load to auto-select exercises */
+      /* Check URL params on load to auto-select reading or section */
       useEffect(() => {
         const params = new URLSearchParams(window.location.search);
+
+        // Check for specific reading selection
+        const readingId = params.get('reading');
+        if (readingId) {
+          const reading = readings.find(r => r.id === readingId);
+          if (reading) {
+            setSelectedReading(reading);
+            return;
+          }
+        }
+
+        // Check for section selection (exercises)
         if (params.get('section') === 'exercises') {
           const exercisesReading = readings.find(r => r.id === 'exercises-link');
           if (exercisesReading) {
@@ -267,12 +279,12 @@ Many complicated ideas about the rainbow have been formed. The difference in the
           isResourceList: true,
           resources: [
             { title: 'Vowel Placement', pdfUrl: 'https://drive.google.com/file/d/1O77UEz7p8dH3KtmUwSMgqWj7B34_3bkT/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'Rainbow Passage', pdfUrl: 'https://drive.google.com/file/d/1F0GKKgbnQE7_GnUAXoBt3EIzH8kkpZho/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'Masc Monologues', pdfUrl: 'https://drive.google.com/file/d/11ZEbK-BE0OVag_t7HajVZ-9u7tTw74Zi/view?usp=drive_link', status: 'coming-soon' },
+            { title: 'Rainbow Passage', pdfUrl: 'https://drive.google.com/file/d/1F0GKKgbnQE7_GnUAXoBt3EIzH8kkpZho/view?usp=drive_link', digitalPage: './index.html?reading=rainbow', status: 'available' },
+            { title: 'Masc Monologues', pdfUrl: 'https://drive.google.com/file/d/11ZEbK-BE0OVag_t7HajVZ-9u7tTw74Zi/view?usp=drive_link', digitalPage: './index.html', status: 'available' },
             { title: 'Masculine Vowel Chart', pdfUrl: 'https://drive.google.com/file/d/10YC1-trnQ6ss3ApMPH5GVEVH0HbTxRP7/view?usp=drive_link', status: 'coming-soon' },
             { title: 'Masc Vowel Glides', pdfUrl: 'https://drive.google.com/file/d/1wz1z8jr422-0enQEvtTf7un-wXHW4bVv/view?usp=drive_link', status: 'coming-soon' },
             { title: 'FTM Students Syllabus', pdfUrl: 'https://drive.google.com/file/d/1H3jjhw2NqYs-ekJNn383RUExNBZJ2byv/view?usp=drive_link', status: 'coming-soon' },
-            { title: 'Grandfather Passage', pdfUrl: 'https://drive.google.com/file/d/17FkG9Wf3Be1txC8nRa7JIK25FN3whnjS/view?usp=drive_link', status: 'coming-soon' },
+            { title: 'Grandfather Passage', pdfUrl: 'https://drive.google.com/file/d/17FkG9Wf3Be1txC8nRa7JIK25FN3whnjS/view?usp=drive_link', digitalPage: './index.html?reading=grandfather', status: 'available' },
             { title: 'Consonant Buddies', pdfUrl: 'https://drive.google.com/file/d/13qUGZyE_07MByOMjc3ffqpd41BbAlRCA/view?usp=drive_link', status: 'coming-soon' }
           ]
         }
