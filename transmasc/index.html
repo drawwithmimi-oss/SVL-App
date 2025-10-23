@@ -118,6 +118,8 @@
       const [selectedReading, setSelectedReading] = useState(null);
       const [fontSize, setFontSize] = useState('large');
       const [showRecordingsModal, setShowRecordingsModal] = useState(false);
+      const [isReplayPlaying, setIsReplayPlaying] = useState(false);
+      const replayAudioRef = useRef(null);
 
       // Use shared audio engine (v2.6)
       const audio = useVoiceAudio(showRecordingsModal);
@@ -686,20 +688,37 @@ Many complicated ideas about the rainbow have been formed. The difference in the
                     {lastRecording && (
                       <button
                         onClick={async () => {
-                          // Stop mic BEFORE starting playback (critical for iOS volume)
-                          stopMicrophoneForPlayback();
+                          if (isReplayPlaying) {
+                            // Stop playback
+                            if (replayAudioRef.current) {
+                              replayAudioRef.current.pause();
+                              replayAudioRef.current = null;
+                            }
+                            setIsReplayPlaying(false);
+                            await restartMicrophoneAfterPlayback();
+                          } else {
+                            // Start playback
+                            stopMicrophoneForPlayback();
+                            await new Promise(resolve => setTimeout(resolve, 200));
 
-                          // Wait for mic to fully release (Safari needs time to update audio route)
-                          await new Promise(resolve => setTimeout(resolve, 200));
+                            const audio = new Audio(lastRecording.url);
+                            replayAudioRef.current = audio;
 
-                          const audio = new Audio(lastRecording.url);
-                          // Only restart on ended (not pause - that causes duplicate restarts)
-                          audio.onended = restartMicrophoneAfterPlayback;
-                          audio.play();
+                            audio.onended = () => {
+                              setIsReplayPlaying(false);
+                              replayAudioRef.current = null;
+                              restartMicrophoneAfterPlayback();
+                            };
+
+                            audio.play();
+                            setIsReplayPlaying(true);
+                          }
                         }}
-                        className="w-full py-2 rounded-lg text-sm text-white font-semibold bg-pink-500"
+                        className={`w-full py-2 rounded-lg text-sm text-white font-semibold ${
+                          isReplayPlaying ? 'bg-red-600' : 'bg-pink-500'
+                        }`}
                       >
-                        ▶️ Replay Last
+                        {isReplayPlaying ? '⏹️ Stop' : '▶️ Replay Last'}
                       </button>
                     )}
 
