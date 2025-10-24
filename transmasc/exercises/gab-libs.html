@@ -34,6 +34,7 @@
       background-color: var(--brand-beige);
       color: var(--brand-grey);
       line-height: 1.6;
+      overflow-x: hidden;
     }
 
     .header {
@@ -135,6 +136,9 @@
       font-size: 18px;
       line-height: 1.7;
       color: var(--brand-grey);
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      word-break: break-word;
     }
 
     /* Sound effects styling */
@@ -179,6 +183,10 @@
         align-items: flex-start;
       }
 
+      .wrap {
+        padding: 0 16px;
+      }
+
       .title {
         font-size: 32px;
         margin-bottom: 10px;
@@ -190,7 +198,7 @@
       }
 
       .story-card {
-        padding: 24px 20px;
+        padding: 20px 16px;
       }
 
       .story-title {
@@ -207,12 +215,16 @@
     }
 
     @media (max-width: 480px) {
+      .wrap {
+        padding: 0 12px;
+      }
+
       .story-card {
-        padding: 20px 16px;
+        padding: 16px 12px;
       }
 
       .story-title {
-        font-size: 22px;
+        font-size: 20px;
       }
 
       .story-text {
