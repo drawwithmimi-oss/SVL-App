@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gab Libs — Voice Training Companion</title>
+
+  <!-- Averia Serif Libre Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@700&display=swap" rel="stylesheet">
+
+  <!-- IBM Plex Sans Font -->
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Custom CSS Variables for Brand Colors */
+    :root {
+      --brand-purple: #904dff;
+      --brand-orange: #ff722f;
+      --brand-pink: #ffa2fe;
+      --brand-yellow: #fdd55a;
+      --brand-beige: #fff4f2;
+      --brand-grey: #3b1e36;
+      --brand-white: #ffffff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--brand-beige);
+      color: var(--brand-grey);
+      line-height: 1.6;
+    }
+
+    .header {
+      background: var(--brand-pink);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(255, 162, 254, 0.3);
+    }
+
+    .header-content {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-button {
+      padding: 10px 20px;
+      background: white;
+      color: var(--brand-pink);
+      border: 2px solid white;
+      border-radius: 25px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .back-button:hover {
+      background: var(--brand-purple);
+      color: white;
+      border-color: var(--brand-purple);
+    }
+
+    /* Header Image */
+    .header-image {
+      text-align: center;
+      margin: 32px auto 24px;
+      max-width: 900px;
+      padding: 0 20px;
+    }
+
+    .header-image img {
+      max-width: 350px;
+      width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto 64px;
+      padding: 0 20px;
+    }
+
+    .title {
+      text-align: center;
+      font-family: 'Averia Serif Libre', serif;
+      font-weight: 700;
+      font-size: 40px;
+      color: var(--brand-grey);
+      margin: 0 0 12px;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-weight: 700;
+      font-size: 22px;
+      color: var(--brand-purple);
+      margin: 0 0 40px;
+    }
+
+    /* Story Cards */
+    .story-card {
+      background: var(--brand-white);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 24px;
+      border: 3px solid var(--brand-purple);
+      box-shadow: 0 8px 20px rgba(144, 77, 255, 0.15);
+    }
+
+    .story-title {
+      font-family: 'Averia Serif Libre', serif;
+      color: var(--brand-purple);
+      font-size: 28px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0 0 20px;
+    }
+
+    .story-text {
+      font-size: 18px;
+      line-height: 1.7;
+      color: var(--brand-grey);
+    }
+
+    /* Sound effects styling */
+    strong {
+      font-weight: 700;
+    }
+
+    em {
+      font-style: italic;
+    }
+
+    /* Pause chip */
+    .pause {
+      display: inline-block;
+      font-size: 0.85em;
+      line-height: 1;
+      padding: 0.25em 0.6em;
+      margin: 0 0.15em;
+      border-radius: 999px;
+      background: var(--brand-yellow);
+      color: var(--brand-grey);
+      vertical-align: baseline;
+      white-space: nowrap;
+      font-weight: 600;
+      font-style: normal;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-family: 'Averia Serif Libre', serif;
+      color: var(--brand-purple);
+      font-weight: 700;
+      font-size: 24px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .title {
+        font-size: 32px;
+        margin-bottom: 10px;
+      }
+
+      .subtitle {
+        font-size: 20px;
+        margin-bottom: 28px;
+      }
+
+      .story-card {
+        padding: 24px 20px;
+      }
+
+      .story-title {
+        font-size: 24px;
+      }
+
+      .story-text {
+        font-size: 17px;
+      }
+
+      .footer {
+        font-size: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .story-card {
+        padding: 20px 16px;
+      }
+
+      .story-title {
+        font-size: 22px;
+      }
+
+      .story-text {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <a href="javascript:history.back()" class="back-button">← Back to Exercises</a>
+      <div>
+        <h1 style="margin: 0; font-size: 24px; text-align: left; color: white; font-family: 'Averia Serif Libre', serif;">Gab Libs</h1>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Image -->
+  <div class="header-image">
+    <img src="../../assets/Visuals/icones/Transfemme/Gab Libs.png" alt="Gab Libs">
+  </div>
+
+  <main class="wrap">
+    <h1 class="title">Gab Libs</h1>
+    <p class="subtitle">Use your voice to make the sound effects</p>
+
+    <!-- The Haunted House -->
+    <div class="story-card">
+      <h2 class="story-title">The Haunted House</h2>
+      <p class="story-text">
+        It was a dark and stormy night. <strong><em>The wind was howling</em></strong>
+        <span class="pause">(pause)</span>, and a black cat sat on a fence outside a haunted house.
+        A <strong>siren</strong> <span class="pause">(pause)</span> wailed in the distance. The cat
+        <strong>meowed</strong> <span class="pause">(pause)</span> in alarm as she heard the sound of footsteps.
+        The footsteps were getting closer, but slowing down as they
+        <strong>plodded through the deep mud</strong>
+        <span class="pause">(pause)</span> created by the storm. The cat bounded into the haunted house to
+        seek shelter. The door was ajar, and it <strong>creaked</strong>
+        <span class="pause">(pause)</span> as she nudged it farther open and stepped inside. Inside the house,
+        she could hear the <strong>drip, drip, drip of a leaky faucet</strong>
+        <span class="pause">(pause)</span>. The footsteps from outside suddenly stopped – the shoes were stuck
+        in the mud. The cat froze and listened to the shoes' owner rip open
+        <strong>their velcro</strong> <span class="pause">(pause)</span> and walk up the
+        <strong>creaky steps</strong> <span class="pause">(pause)</span> into the house.
+      </p>
+    </div>
+
+    <!-- A Day on the Farm -->
+    <div class="story-card">
+      <h2 class="story-title">A Day on the Farm</h2>
+      <p class="story-text">
+        It was a beautiful sunny day!
+        <strong>Birds were chirping</strong> <span class="pause">(pause)</span>
+        and the <strong>leaves on the trees rustled</strong>
+        <span class="pause">(pause)</span> in the breeze. The farmer
+        <strong>yawned</strong> <span class="pause">(pause)</span> as she got out of bed. She pried open the
+        <strong>creaky farmhouse door</strong> <span class="pause">(pause)</span> and started to feed the animals.
+        First were the goats! They <strong>bleated</strong> <span class="pause">(pause)</span> while they eagerly
+        awaited their breakfast. The <strong>sheep baaed</strong> <span class="pause">(pause)</span> nearby,
+        enviously watching the goats. The farmer went to the barn to check on the horses, who
+        <strong>whinnied</strong> <span class="pause">(pause)</span> with pleasure when they saw her. Throughout
+        the farmer's busy day, she also milked the <strong>mooing cows</strong>
+        <span class="pause">(pause)</span>, collected eggs from the <strong>clucking chickens</strong>
+        <span class="pause">(pause)</span>, and drove her <strong>tractor</strong>
+        <span class="pause">(pause)</span> to check on the crops. By the time she crawled into bed at night, it
+        was dark out. She fell asleep to the sounds of <strong>crickets</strong>
+        <span class="pause">(pause)</span> and <strong>hooting owls</strong>
+        <span class="pause">(pause)</span>.
+      </p>
+    </div>
+
+    <!-- The Magic Schoolbus Explores a Phone -->
+    <div class="story-card">
+      <h2 class="story-title">The Magic Schoolbus Explores a Phone</h2>
+      <p class="story-text">
+        Ms. Frizzle set her phone on her desk, and ushered her class into the magic schoolbus. The class watched
+        in amazement as the bus shrank, started <strong>whirring like a helicopter</strong>
+        <span class="pause">(pause)</span>, and flew into Ms. Frizzle's phone, just as it started to
+        <strong>vibrate</strong> <span class="pause">(pause)</span> with an incoming call. The class was learning
+        about apps, so they explored some of Ms. Frizzle's. Ralphie <strong>took a photo</strong>
+        <span class="pause">(pause)</span>, while Molly decided to listen to some music. She found some smooth jazz
+        with an <strong>upright bass solo</strong> <span class="pause">(pause)</span>, and then a gorgeous
+        <strong>soprano opera aria</strong> <span class="pause">(pause)</span>. Dorothy couldn't believe how dusty
+        it was, and she <strong>sneezed</strong> <span class="pause">(pause)</span>! A second <strong>sneeze</strong>
+        <span class="pause">(pause)</span> caused Dorothy to jump and set off an <strong>alarm</strong>
+        <span class="pause">(pause)</span>. The kids <strong>shrieked</strong> <span class="pause">(pause)</span> in
+        surprise and hurried back onto the bus. The magic schoolbus left the phone and dropped the class back in the
+        classroom. Ms. Frizzle and the kids breathed a <strong>sigh</strong>
+        <span class="pause">(pause)</span> of relief to be back safely.
+      </p>
+    </div>
+
+    <!-- Double, Double, Toil and Trouble -->
+    <div class="story-card">
+      <h2 class="story-title">Double, Double, Toil and Trouble</h2>
+      <p class="story-text">
+        A coven of witches gathered near a pond. They could hear <strong>frogs croaking</strong>
+        <span class="pause">(pause)</span>, and they <strong>cackled</strong> <span class="pause">(pause)</span> as
+        they thought about how well the frogs' toes would work in their potion. The witches collected their ingredients.
+        They set a fire, waiting until it was blazing and <strong>crackling</strong>
+        <span class="pause">(pause)</span> to start their concoction. One witch grabbed a <strong>hissing snake</strong>
+        <span class="pause">(pause)</span> to add to the cauldron. Another managed to catch a bat, and it
+        <strong>flapped its wings</strong> <span class="pause">(pause)</span> furiously trying to escape her clutches.
+        It started to rain. There was a <strong>clap of thunder</strong> <span class="pause">(pause)</span>, but the
+        witches set a spell to keep their fire burning. A nearby puppy <strong>whimpered</strong>
+        <span class="pause">(pause)</span> and ran to seek shelter. The witches kept adding to their cauldron until
+        they were satisfied with the <strong>boiling potion</strong> <span class="pause">(pause)</span>. They said,
+        "Double, double toil and trouble, fire burn and cauldron bubble" and <strong>cackled</strong>
+        <span class="pause">(pause)</span> again with glee.
+      </p>
+    </div>
+
+    <p class="footer">www.seattlevoicelab.com</p>
+  </main>
+</body>
+</html>
